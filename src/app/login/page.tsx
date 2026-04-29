@@ -70,7 +70,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center overflow-hidden bg-[#0D1829]">
+    <div suppressHydrationWarning className="relative min-h-screen flex flex-col items-center overflow-hidden bg-[#0D1829]">
       <MountainSilhouette />
 
       <div className="relative z-10 flex flex-col items-center w-full px-5 pt-14 pb-10">
