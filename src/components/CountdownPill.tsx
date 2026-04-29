@@ -1,24 +1,32 @@
-"use client";
-
-import { useState, useEffect } from "react";
-
-const LEH_DATE = new Date("2026-09-13T00:00:00");
+"use client"
+import { useState, useEffect } from 'react'
 
 export default function CountdownPill() {
-  const [days, setDays] = useState(0);
+  const [days, setDays] = useState<number | null>(null)
 
   useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const diff = LEH_DATE.getTime() - today.getTime();
-    setDays(Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24))));
-  }, []);
+    const raceDate = new Date('2026-09-13')
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const diff = Math.ceil((raceDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    setDays(diff)
+  }, [])
+
+  if (days === null) return null
 
   return (
-    <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-saffron">
-      <span className="text-navy-deep text-xs font-bold tracking-widest uppercase font-sans">
-        {days} DAYS TO LEH
-      </span>
+    <div style={{
+      backgroundColor: '#E8A020',
+      color: '#0D1829',
+      fontFamily: 'Montserrat, sans-serif',
+      fontWeight: 700,
+      fontSize: '12px',
+      letterSpacing: '0.15em',
+      padding: '8px 20px',
+      borderRadius: '999px',
+      display: 'inline-block'
+    }}>
+      {days} DAYS TO LEH
     </div>
-  );
+  )
 }
