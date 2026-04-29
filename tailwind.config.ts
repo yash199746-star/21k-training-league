@@ -18,8 +18,8 @@ const config: Config = {
         gold: "#C9B87A",
       },
       fontFamily: {
-        sans: ["Montserrat", "sans-serif"],
-        playfair: ["Playfair Display", "serif"],
+        sans: ["var(--font-montserrat)", "Montserrat", "sans-serif"],
+        playfair: ["var(--font-playfair)", "Playfair Display", "serif"],
       },
     },
   },
