@@ -88,7 +88,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-5">
           <h1
-            className="font-playfair italic font-bold leading-none tracking-tight"
+            className="font-playfair font-bold leading-none tracking-tight"
             style={{ fontSize: "88px", color: "#C9B87A" }}
           >
             21K
