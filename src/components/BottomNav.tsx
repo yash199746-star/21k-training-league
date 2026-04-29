@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const tabs = [
+const sideTabs = [
   {
     label: "Home",
     href: "/",
@@ -38,16 +38,6 @@ const tabs = [
     ),
   },
   {
-    label: "Add Activity",
-    href: "/add",
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 1.8} strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 8v8M8 12h8" />
-      </svg>
-    ),
-  },
-  {
     label: "Profile",
     href: "/profile",
     icon: (active: boolean) => (
@@ -61,26 +51,133 @@ const tabs = [
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const addActive = pathname === "/add";
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-navy-deep border-t border-sand/10 z-50">
-      <div className="flex items-center justify-around h-16 px-2">
-        {tabs.map((tab) => {
+    <nav style={{
+      position: "fixed",
+      bottom: 0,
+      left: "50%",
+      transform: "translateX(-50%)",
+      width: "100%",
+      maxWidth: "430px",
+      backgroundColor: "#0D1829",
+      borderTop: "1px solid rgba(212,197,169,0.1)",
+      zIndex: 50,
+    }}>
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-around",
+        height: "64px",
+        padding: "0 8px",
+        position: "relative",
+      }}>
+        {/* Left two tabs: Home, My Stats */}
+        {sideTabs.slice(0, 2).map((tab) => {
           const active = pathname === tab.href;
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className="flex flex-col items-center gap-0.5 flex-1 py-2"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "2px",
+                flex: 1,
+                padding: "8px 0",
+                color: active ? "#C9B87A" : "rgba(212,197,169,0.4)",
+                textDecoration: "none",
+              }}
             >
-              <span className={active ? "text-gold" : "text-sand/50"}>
-                {tab.icon(active)}
+              {tab.icon(active)}
+              <span style={{
+                fontSize: "9px",
+                fontFamily: "Montserrat, sans-serif",
+                fontWeight: 700,
+                letterSpacing: "0.07em",
+                textTransform: "uppercase",
+                color: active ? "#C9B87A" : "rgba(212,197,169,0.4)",
+              }}>
+                {tab.label}
               </span>
-              <span
-                className={`text-[9px] font-semibold tracking-wide uppercase font-sans ${
-                  active ? "text-gold" : "text-sand/50"
-                }`}
-              >
+            </Link>
+          );
+        })}
+
+        {/* Center FAB: Add Activity */}
+        <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", position: "relative" }}>
+          <Link
+            href="/add"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "4px",
+              textDecoration: "none",
+              position: "relative",
+              top: "-14px",
+            }}
+          >
+            <div style={{
+              width: "52px",
+              height: "52px",
+              borderRadius: "50%",
+              backgroundColor: addActive ? "#E8D898" : "#C9B87A",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: addActive
+                ? "0 4px 20px rgba(201,184,122,0.55), 0 0 0 4px rgba(201,184,122,0.15)"
+                : "0 4px 16px rgba(201,184,122,0.35), 0 0 0 3px rgba(201,184,122,0.1)",
+              flexShrink: 0,
+            }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0D1829" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </div>
+            <span style={{
+              fontSize: "9px",
+              fontFamily: "Montserrat, sans-serif",
+              fontWeight: 700,
+              letterSpacing: "0.07em",
+              textTransform: "uppercase",
+              color: addActive ? "#C9B87A" : "rgba(212,197,169,0.5)",
+              marginTop: "2px",
+            }}>
+              Add
+            </span>
+          </Link>
+        </div>
+
+        {/* Right two tabs: Challenge, Profile */}
+        {sideTabs.slice(2).map((tab) => {
+          const active = pathname === tab.href;
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "2px",
+                flex: 1,
+                padding: "8px 0",
+                color: active ? "#C9B87A" : "rgba(212,197,169,0.4)",
+                textDecoration: "none",
+              }}
+            >
+              {tab.icon(active)}
+              <span style={{
+                fontSize: "9px",
+                fontFamily: "Montserrat, sans-serif",
+                fontWeight: 700,
+                letterSpacing: "0.07em",
+                textTransform: "uppercase",
+                color: active ? "#C9B87A" : "rgba(212,197,169,0.4)",
+              }}>
                 {tab.label}
               </span>
             </Link>
