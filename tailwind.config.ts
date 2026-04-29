@@ -15,7 +15,7 @@ const config: Config = {
         "navy-deep": "#0D1829",
         stone: "#F5F2ED",
         himalayan: "#4A7C59",
-        saffron: "#E8A020",
+        gold: "#C9B87A",
       },
       fontFamily: {
         sans: ["Montserrat", "sans-serif"],

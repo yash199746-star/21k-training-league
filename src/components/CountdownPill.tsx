@@ -16,7 +16,7 @@ export default function CountdownPill() {
 
   return (
     <div style={{
-      backgroundColor: '#E8A020',
+      backgroundColor: '#C9B87A',
       color: '#0D1829',
       fontFamily: 'Montserrat, sans-serif',
       fontWeight: 700,
@@ -26,7 +26,7 @@ export default function CountdownPill() {
       borderRadius: '999px',
       display: 'inline-block'
     }}>
-      {days} DAYS TO LEH
+      {days} DAYS TO RACE
     </div>
   )
 }

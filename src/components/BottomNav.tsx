@@ -73,12 +73,12 @@ export default function BottomNav() {
               href={tab.href}
               className="flex flex-col items-center gap-0.5 flex-1 py-2"
             >
-              <span className={active ? "text-saffron" : "text-sand/50"}>
+              <span className={active ? "text-gold" : "text-sand/50"}>
                 {tab.icon(active)}
               </span>
               <span
                 className={`text-[9px] font-semibold tracking-wide uppercase font-sans ${
-                  active ? "text-saffron" : "text-sand/50"
+                  active ? "text-gold" : "text-sand/50"
                 }`}
               >
                 {tab.label}

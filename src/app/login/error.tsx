@@ -19,7 +19,7 @@ export default function LoginError({
       padding: "24px",
       fontFamily: "monospace",
     }}>
-      <p style={{ color: "#E8A020", fontWeight: "bold", marginBottom: "12px" }}>
+      <p style={{ color: "#C9B87A", fontWeight: "bold", marginBottom: "12px" }}>
         Runtime error — paste this into Claude:
       </p>
       <pre style={{
@@ -41,7 +41,7 @@ export default function LoginError({
       <button
         onClick={reset}
         style={{
-          backgroundColor: "#E8A020",
+          backgroundColor: "#C9B87A",
           color: "#0D1829",
           border: "none",
           padding: "10px 24px",
