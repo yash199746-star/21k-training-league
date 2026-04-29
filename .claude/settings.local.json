@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match \"git|github\" } | Select-Object Name; Get-ChildItem \"C:\\\\Users\\\\ext.yash.shah\\\\AppData\\\\Local\\\\\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match \"git|github\" } | Select-Object Name)"
+    ]
+  }
+}
