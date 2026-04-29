@@ -51,7 +51,7 @@ const sideTabs = [
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const addActive = pathname === "/add";
+  const addActive = pathname === "/add-activity";
 
   return (
     <nav style={{
@@ -109,7 +109,7 @@ export default function BottomNav() {
         {/* Center FAB: Add Activity */}
         <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", position: "relative" }}>
           <Link
-            href="/add"
+            href="/add-activity"
             style={{
               display: "flex",
               flexDirection: "column",
