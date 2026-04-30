@@ -11,13 +11,10 @@ const SUBTYPES = ["Walk", "Cycle", "Gym", "Yoga", "Swim", "Sports", "Other"];
 
 // ── Mock weekly data ────────────────────────────────────────────────────────
 const MOCK_STREAK         = 8;
-const MOCK_RUNS_USED      = 3;
-const MOCK_RUNS_LIMIT     = 4;
 const MOCK_ACTIVITY_USED  = 1;
 const MOCK_ACTIVITY_LIMIT = 2;
 const MOCK_REST_USED      = false;
 
-const RUNS_REMAINING     = MOCK_RUNS_LIMIT     - MOCK_RUNS_USED;
 const ACTIVITY_REMAINING = MOCK_ACTIVITY_LIMIT - MOCK_ACTIVITY_USED;
 
 // ── Card icon components ────────────────────────────────────────────────────
@@ -25,11 +22,18 @@ function RunIcon({ active }: { active: boolean }) {
   const c = active ? "#C9B87A" : "rgba(212,197,169,0.4)";
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="15" cy="4" r="2" />
-      <path d="M12.5 8l-3 5.5 3 2-2 4.5" />
-      <path d="M9.5 13.5l-3-1.5" />
-      <path d="M12.5 8l3.5-1.5" />
-      <path d="M13 15.5l2.5 4" />
+      {/* head */}
+      <circle cx="15.5" cy="3.5" r="1.8" />
+      {/* torso leaning forward */}
+      <path d="M13.5 6.5 L10 12" />
+      {/* front arm reaching back */}
+      <path d="M13.5 6.5 L17 5" />
+      {/* back arm swinging forward */}
+      <path d="M11.5 9.5 L8 11.5" />
+      {/* front leg striding forward */}
+      <path d="M10 12 L7.5 16.5 L5 20" />
+      {/* back leg pushing off */}
+      <path d="M10 12 L12.5 16 L15.5 19.5" />
     </svg>
   );
 }
@@ -153,14 +157,12 @@ export default function AddActivityPage() {
   const today  = todayISO();
 
   const submitDisabled =
-    (activityType === "run"      && RUNS_REMAINING     <= 0) ||
     (activityType === "activity" && ACTIVITY_REMAINING <= 0) ||
     (activityType === "rest"     && MOCK_REST_USED);
 
   function getDisabledReason(): string | null {
-    if (activityType === "run"      && RUNS_REMAINING     <= 0) return "No run days remaining this week.";
-    if (activityType === "activity" && ACTIVITY_REMAINING <= 0) return "No activity days remaining this week.";
-    if (activityType === "rest"     && MOCK_REST_USED)          return "You have already taken your rest day this week.";
+    if (activityType === "activity" && ACTIVITY_REMAINING <= 0) return "Maximum 2 activity days reached this week.";
+    if (activityType === "rest"     && MOCK_REST_USED)          return "Rest day already used this week.";
     return null;
   }
 
@@ -178,9 +180,8 @@ export default function AddActivityPage() {
       if (!duration || parseInt(duration, 10) <= 0) errs.push("Please enter a valid duration.");
     }
     if (date > today) errs.push("Date cannot be in the future.");
-    if (activityType === "run"      && RUNS_REMAINING     <= 0) errs.push("No run days remaining this week.");
-    if (activityType === "activity" && ACTIVITY_REMAINING <= 0) errs.push("No activity days remaining this week.");
-    if (activityType === "rest"     && MOCK_REST_USED)          errs.push("You have already taken your rest day this week.");
+    if (activityType === "activity" && ACTIVITY_REMAINING <= 0) errs.push("Maximum 2 activity days reached this week.");
+    if (activityType === "rest"     && MOCK_REST_USED)          errs.push("Rest day already used this week.");
     return errs;
   }
 
@@ -422,20 +423,7 @@ export default function AddActivityPage() {
           </div>
         </div>
 
-        {/* Weekly limits info line */}
-        {activityType === "run" && (
-          <p style={{
-            fontFamily: "Montserrat, sans-serif",
-            fontSize: "11px",
-            color: RUNS_REMAINING > 0 ? "rgba(212,197,169,0.5)" : "rgba(220,90,90,0.8)",
-            marginTop: "10px",
-            marginBottom: "16px",
-          }}>
-            {RUNS_REMAINING > 0
-              ? `${RUNS_REMAINING} run day${RUNS_REMAINING !== 1 ? "s" : ""} remaining this week`
-              : "No run days remaining this week"}
-          </p>
-        )}
+        {/* Weekly usage info line */}
         {activityType === "activity" && (
           <p style={{
             fontFamily: "Montserrat, sans-serif",
@@ -444,24 +432,24 @@ export default function AddActivityPage() {
             marginTop: "10px",
             marginBottom: "16px",
           }}>
-            {ACTIVITY_REMAINING > 0
-              ? `${ACTIVITY_REMAINING} of ${MOCK_ACTIVITY_LIMIT} activity day${ACTIVITY_REMAINING !== 1 ? "s" : ""} remaining this week`
-              : "No activity days remaining this week"}
+            {MOCK_ACTIVITY_USED} of {MOCK_ACTIVITY_LIMIT} activity days used this week
           </p>
         )}
-        {activityType === "rest" && (
+        {activityType === "rest" && MOCK_REST_USED && (
           <p style={{
             fontFamily: "Montserrat, sans-serif",
             fontSize: "11px",
-            color: MOCK_REST_USED ? "rgba(220,90,90,0.8)" : "#4A7C59",
+            color: "rgba(220,90,90,0.8)",
             marginTop: "10px",
             marginBottom: "16px",
             fontWeight: 600,
           }}>
-            {MOCK_REST_USED ? "Rest day already used this week" : "Rest day available this week"}
+            Rest day already used this week
           </p>
         )}
-        {activityType === null && <div style={{ marginBottom: "20px" }} />}
+        {(activityType === null || activityType === "run" || (activityType === "rest" && !MOCK_REST_USED)) && (
+          <div style={{ marginBottom: "20px" }} />
+        )}
 
         {/* Step 2: Details */}
         {activityType && (
