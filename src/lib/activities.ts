@@ -63,7 +63,6 @@ export async function logActivity({
       activity_type: activityType,
       distance_km: distanceKm || null,
       duration_mins: durationMins || null,
-      duration_secs: durationSecs || null,
       activity_subtype: activitySubtype || null,
       points: basePoints,
       streak_bonus: streakBonus,
