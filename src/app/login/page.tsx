@@ -15,6 +15,7 @@ const MountainSVG = (
       width: "100%",
       height: "100%",
       zIndex: 0,
+      pointerEvents: "none",
     }}
     preserveAspectRatio="xMidYMax slice"
   >
@@ -66,8 +67,10 @@ function LoginForm() {
     }}>
       {MountainSVG}
 
+      <div style={{ position: "relative", zIndex: 10, width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
+
       {/* Logo */}
-      <div style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
+      <div style={{ textAlign: "center" }}>
         <p style={{
           fontFamily: "Montserrat, sans-serif",
           fontWeight: 800,
@@ -104,8 +107,6 @@ function LoginForm() {
       {/* Callback error banner */}
       {callbackError && (
         <div style={{
-          position: "relative",
-          zIndex: 1,
           width: "100%",
           maxWidth: "380px",
           backgroundColor: "rgba(210,70,70,0.15)",
@@ -125,8 +126,6 @@ function LoginForm() {
       {/* Form */}
       {!sent ? (
         <div style={{
-          position: "relative",
-          zIndex: 1,
           width: "100%",
           maxWidth: "380px",
           backgroundColor: "rgba(13,24,41,0.85)",
@@ -217,8 +216,6 @@ function LoginForm() {
         </div>
       ) : (
         <div style={{
-          position: "relative",
-          zIndex: 1,
           width: "100%",
           maxWidth: "380px",
           backgroundColor: "rgba(13,24,41,0.85)",
@@ -266,6 +263,8 @@ function LoginForm() {
           </button>
         </div>
       )}
+
+      </div>{/* end content wrapper */}
     </div>
   );
 }
