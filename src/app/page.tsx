@@ -1,11 +1,15 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import AppLayout from "@/components/AppLayout";
 import CountdownPill from "@/components/CountdownPill";
+import { createClient } from "@/lib/supabase-browser";
 
 type ActivityType = "run" | "activity" | "rest" | "none";
 
 interface Player {
+  id: string;
   rank: number;
   name: string;
   initials: string;
@@ -15,50 +19,52 @@ interface Player {
   todayType: ActivityType;
   todayPoints: number;
   challengeMaster: boolean;
+  isCurrentUser: boolean;
 }
 
-const players: Player[] = [
-  {
-    rank: 1,
-    name: "Yash",
-    initials: "Y",
-    points: 142,
-    streak: 8,
-    todayLabel: "Run · 6 km",
-    todayType: "run",
-    todayPoints: 12,
-    challengeMaster: true,
-  },
-  {
-    rank: 2,
-    name: "Arjun",
-    initials: "A",
-    points: 118,
-    streak: 5,
-    todayLabel: "Gym",
-    todayType: "activity",
-    todayPoints: 8,
-    challengeMaster: false,
-  },
-  {
-    rank: 3,
-    name: "Priya",
-    initials: "P",
-    points: 97,
-    streak: 3,
-    todayLabel: "Rest Day",
-    todayType: "rest",
-    todayPoints: 0,
-    challengeMaster: false,
-  },
-];
+interface RawActivity {
+  user_id: string;
+  date: string;
+  activity_type: string;
+  activity_subtype: string | null;
+  distance_km: number | null;
+  total_points_that_day: number | null;
+}
 
 const activityStyles: Record<ActivityType, { bg: string; color: string; border: string }> = {
-  run:      { bg: "rgba(74,124,89,0.18)",    color: "#4A7C59", border: "rgba(74,124,89,0.4)" },
-  activity: { bg: "rgba(201,184,122,0.12)",  color: "#C9B87A", border: "rgba(201,184,122,0.35)" },
-  rest:     { bg: "rgba(212,197,169,0.08)",  color: "#D4C5A9", border: "rgba(212,197,169,0.2)" },
-  none:     { bg: "rgba(212,197,169,0.04)",  color: "rgba(212,197,169,0.4)", border: "rgba(212,197,169,0.1)" },
+  run:      { bg: "rgba(74,124,89,0.18)",    color: "#4A7C59",              border: "rgba(74,124,89,0.4)"       },
+  activity: { bg: "rgba(201,184,122,0.12)",  color: "#C9B87A",              border: "rgba(201,184,122,0.35)"    },
+  rest:     { bg: "rgba(212,197,169,0.08)",  color: "#D4C5A9",              border: "rgba(212,197,169,0.2)"     },
+  none:     { bg: "rgba(212,197,169,0.04)",  color: "rgba(212,197,169,0.4)", border: "rgba(212,197,169,0.1)"   },
 };
+
+const CM_ORDER = ["Yash", "Hardik", "Devansh"];
+
+function getChallengeMasterName(): string {
+  const APRIL_1_2026 = new Date("2026-04-01").getTime();
+  const weekNumber = Math.floor((Date.now() - APRIL_1_2026) / (7 * 24 * 60 * 60 * 1000));
+  return CM_ORDER[((weekNumber % 3) + 3) % 3];
+}
+
+function getCurrentWeekNumber(): number {
+  const APRIL_1_2026 = new Date("2026-04-01").getTime();
+  return Math.max(1, Math.floor((Date.now() - APRIL_1_2026) / (7 * 24 * 60 * 60 * 1000)) + 1);
+}
+
+function todayActivityFor(activities: RawActivity[], userId: string, today: string): {
+  label: string; type: ActivityType; points: number;
+} {
+  const act = activities.find(a => a.user_id === userId && a.date === today);
+  if (!act) return { label: "No activity yet", type: "none", points: 0 };
+  if (act.activity_type === "run") {
+    const km = act.distance_km != null ? Number(act.distance_km.toFixed(1)) : "?";
+    return { label: `Run · ${km} km`, type: "run", points: act.total_points_that_day || 0 };
+  }
+  if (act.activity_type === "activity") {
+    return { label: act.activity_subtype || "Activity", type: "activity", points: act.total_points_that_day || 0 };
+  }
+  return { label: "Rest Day", type: "rest", points: 0 };
+}
 
 function CrownIcon() {
   return (
@@ -68,9 +74,32 @@ function CrownIcon() {
   );
 }
 
+function SkeletonCard({ large }: { large?: boolean }) {
+  return (
+    <div style={{
+      backgroundColor: large ? "rgba(201,184,122,0.03)" : "#1A2744",
+      border: "1px solid rgba(212,197,169,0.07)",
+      borderRadius: large ? "20px" : "16px",
+      padding: large ? "22px 20px" : "16px 18px",
+      marginBottom: "12px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+        <div style={{ width: "30px", height: large ? "30px" : "22px", borderRadius: "6px", backgroundColor: "rgba(212,197,169,0.08)" }} />
+        <div style={{ width: large ? "50px" : "42px", height: large ? "50px" : "42px", borderRadius: "50%", backgroundColor: "rgba(212,197,169,0.08)", flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ width: "80px", height: "12px", borderRadius: "4px", backgroundColor: "rgba(212,197,169,0.08)", marginBottom: "10px" }} />
+          <div style={{ width: "60px", height: "18px", borderRadius: "999px", backgroundColor: "rgba(212,197,169,0.06)" }} />
+        </div>
+        <div style={{ width: "44px", height: large ? "32px" : "26px", borderRadius: "6px", backgroundColor: "rgba(212,197,169,0.08)" }} />
+      </div>
+      <div style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px solid rgba(212,197,169,0.07)", height: "16px", borderRadius: "4px", backgroundColor: "rgba(212,197,169,0.06)", width: "120px" }} />
+    </div>
+  );
+}
+
 function PlayerCard({ player }: { player: Player }) {
   const isFirst = player.rank === 1;
-  const badge = activityStyles[player.todayType];
+  const badge   = activityStyles[player.todayType];
 
   return (
     <div style={{
@@ -78,6 +107,9 @@ function PlayerCard({ player }: { player: Player }) {
       border: isFirst
         ? "1px solid rgba(201,184,122,0.38)"
         : "1px solid rgba(212,197,169,0.07)",
+      borderLeft: player.isCurrentUser && !isFirst
+        ? "3px solid rgba(201,184,122,0.6)"
+        : undefined,
       borderRadius: isFirst ? "20px" : "16px",
       padding: isFirst ? "22px 20px" : "16px 18px",
       marginBottom: "12px",
@@ -133,6 +165,17 @@ function PlayerCard({ player }: { player: Player }) {
             letterSpacing: "0.01em",
           }}>
             {player.name}
+            {player.isCurrentUser && (
+              <span style={{
+                marginLeft: "8px",
+                fontFamily: "Montserrat, sans-serif",
+                fontSize: "9px",
+                fontWeight: 700,
+                color: "rgba(201,184,122,0.5)",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+              }}>you</span>
+            )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
             <span style={{
@@ -195,16 +238,10 @@ function PlayerCard({ player }: { player: Player }) {
         paddingTop: "12px",
         borderTop: "1px solid rgba(212,197,169,0.07)",
       }}>
-        {/* Streak */}
-        <div style={{
-          fontFamily: "Montserrat, sans-serif",
-          fontSize: "12px",
-          color: "rgba(245,242,237,0.6)",
-        }}>
+        <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(245,242,237,0.6)" }}>
           🔥 <span style={{ fontWeight: 600, color: "#F5F2ED" }}>{player.streak}</span> day streak
         </div>
 
-        {/* Challenge Master badge */}
         {player.challengeMaster && (
           <div style={{
             display: "flex",
@@ -233,8 +270,85 @@ function PlayerCard({ player }: { player: Player }) {
 }
 
 export default function HomePage() {
+  const router  = useRouter();
+  const [players,  setPlayers]  = useState<Player[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [weekNum,  setWeekNum]  = useState(1);
+
+  useEffect(() => {
+    async function fetchData() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/login"); return; }
+
+      const today = new Date().toISOString().split("T")[0];
+      const cmName = getChallengeMasterName();
+      setWeekNum(getCurrentWeekNumber());
+
+      const [
+        { data: profiles },
+        { data: activities },
+        { data: streaks },
+      ] = await Promise.all([
+        supabase.from("profiles").select("id, name, email"),
+        supabase.from("activities").select("user_id, date, activity_type, activity_subtype, distance_km, total_points_that_day"),
+        supabase.from("streaks").select("user_id, current_streak"),
+      ]);
+
+      if (!profiles) { setLoading(false); return; }
+
+      // Sum total points per user
+      const pointsByUser: Record<string, number> = {};
+      (activities ?? []).forEach(a => {
+        pointsByUser[a.user_id] = (pointsByUser[a.user_id] || 0) + (a.total_points_that_day || 0);
+      });
+
+      // Streak lookup
+      const streakByUser: Record<string, number> = {};
+      (streaks ?? []).forEach(s => { streakByUser[s.user_id] = s.current_streak || 0; });
+
+      // Build and sort players
+      const built: Player[] = profiles.map(p => {
+        const name    = p.name || p.email?.split("@")[0] || "Unknown";
+        const initials = name.charAt(0).toUpperCase();
+        const today_  = todayActivityFor(activities ?? [], p.id, today);
+        const points  = Math.round(pointsByUser[p.id] || 0);
+
+        return {
+          id:             p.id,
+          rank:           0,
+          name,
+          initials,
+          points,
+          streak:         streakByUser[p.id] || 0,
+          todayLabel:     today_.label,
+          todayType:      today_.type,
+          todayPoints:    today_.points,
+          challengeMaster: name.toLowerCase() === cmName.toLowerCase(),
+          isCurrentUser:  p.id === user.id,
+        };
+      });
+
+      built.sort((a, b) => b.points - a.points);
+      built.forEach((p, i) => { p.rank = i + 1; });
+
+      setPlayers(built);
+      setLoading(false);
+    }
+
+    fetchData();
+  }, [router]);
+
   return (
     <AppLayout>
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.45; }
+        }
+        .skeleton-pulse { animation: pulse 1.6s ease-in-out infinite; }
+      `}</style>
+
       <div style={{ padding: "52px 20px 24px", backgroundColor: "#1A2744", minHeight: "100vh" }}>
 
         {/* Header */}
@@ -270,15 +384,31 @@ export default function HomePage() {
             marginTop: "6px",
             letterSpacing: "0.05em",
           }}>
-            Season standings · Week 12
+            Season standings · Week {weekNum}
           </p>
         </div>
 
         {/* Cards */}
-        <div>
-          {players.map((player) => (
-            <PlayerCard key={player.rank} player={player} />
-          ))}
+        <div className={loading ? "skeleton-pulse" : undefined}>
+          {loading ? (
+            <>
+              <SkeletonCard large />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : players.length === 0 ? (
+            <p style={{
+              fontFamily: "Montserrat, sans-serif",
+              fontSize: "13px",
+              color: "rgba(212,197,169,0.4)",
+              textAlign: "center",
+              marginTop: "40px",
+            }}>
+              No players found
+            </p>
+          ) : (
+            players.map(player => <PlayerCard key={player.id} player={player} />)
+          )}
         </div>
 
       </div>
