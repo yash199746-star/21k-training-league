@@ -1,38 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AppLayout from "@/components/AppLayout";
 import CountdownPill from "@/components/CountdownPill";
+import { createClient } from "@/lib/supabase-browser";
+import { logActivity } from "@/lib/activities";
+import { calculatePoints, getWeekStart } from "@/lib/scoring";
+import type { User } from "@supabase/supabase-js";
 
 type ActivityType = "run" | "activity" | "rest" | null;
 
 const SUBTYPES = ["Walk", "Cycle", "Gym", "Yoga", "Swim", "Sports", "Other"];
-
-// ── Mock weekly data ────────────────────────────────────────────────────────
-const MOCK_STREAK         = 8;
-const MOCK_ACTIVITY_USED  = 1;
-const MOCK_ACTIVITY_LIMIT = 2;
-const MOCK_REST_USED      = false;
-
-const ACTIVITY_REMAINING = MOCK_ACTIVITY_LIMIT - MOCK_ACTIVITY_USED;
+const ACTIVITY_LIMIT = 2;
 
 // ── Card icon components ────────────────────────────────────────────────────
 function RunIcon({ active }: { active: boolean }) {
   const c = active ? "#C9B87A" : "rgba(212,197,169,0.4)";
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-      {/* head */}
       <circle cx="15.5" cy="3.5" r="1.8" />
-      {/* torso leaning forward */}
       <path d="M13.5 6.5 L10 12" />
-      {/* front arm reaching back */}
       <path d="M13.5 6.5 L17 5" />
-      {/* back arm swinging forward */}
       <path d="M11.5 9.5 L8 11.5" />
-      {/* front leg striding forward */}
       <path d="M10 12 L7.5 16.5 L5 20" />
-      {/* back leg pushing off */}
       <path d="M10 12 L12.5 16 L15.5 19.5" />
     </svg>
   );
@@ -73,18 +64,6 @@ const TYPE_CARDS: {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function todayISO() {
   return new Date().toISOString().split("T")[0];
-}
-
-function calcPoints(type: ActivityType, distance: string, activityDuration: string): number {
-  if (type === "run") {
-    const km = parseFloat(distance);
-    return !km || km < 2 ? 0 : Math.round(km);
-  }
-  if (type === "activity") {
-    const mins = parseInt(activityDuration, 10);
-    return !isNaN(mins) && mins >= 30 ? 2 : 0;
-  }
-  return 0;
 }
 
 // ── Shared input styles ──────────────────────────────────────────────────────
@@ -142,27 +121,69 @@ const dateInputStyle: React.CSSProperties = {
 export default function AddActivityPage() {
   const router = useRouter();
 
+  // Auth & real data state
+  const [user,          setUser]          = useState<User | null>(null);
+  const [activityUsed,  setActivityUsed]  = useState(0);
+  const [restUsed,      setRestUsed]      = useState(false);
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [loadingData,   setLoadingData]   = useState(true);
+  const [submitting,    setSubmitting]    = useState(false);
+  const [submitError,   setSubmitError]   = useState<string | null>(null);
+
+  // Form state
   const [activityType, setActivityType] = useState<ActivityType>(null);
   const [distance,     setDistance]     = useState("");
-  const [durationMins, setDurationMins] = useState("");  // run MM
-  const [durationSecs, setDurationSecs] = useState("");  // run SS
-  const [duration,     setDuration]     = useState("");  // activity minutes
+  const [durationMins, setDurationMins] = useState("");
+  const [durationSecs, setDurationSecs] = useState("");
+  const [duration,     setDuration]     = useState("");
   const [date,         setDate]         = useState(todayISO);
   const [subtype,      setSubtype]      = useState("Gym");
   const [submitted,    setSubmitted]    = useState(false);
   const [earnedPoints, setEarnedPoints] = useState(0);
+  const [earnedStreak, setEarnedStreak] = useState(0);
   const [errors,       setErrors]       = useState<string[]>([]);
 
-  const points = calcPoints(activityType, distance, duration);
+  useEffect(() => {
+    async function loadData() {
+      const supabase = createClient();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) { router.replace("/login"); return; }
+      setUser(authUser);
+
+      const weekStart = getWeekStart(new Date());
+      const [{ data: weeklyStats }, { data: streakData }] = await Promise.all([
+        supabase.from("weekly_stats").select("*").eq("user_id", authUser.id).eq("week_start", weekStart).single(),
+        supabase.from("streaks").select("*").eq("user_id", authUser.id).single(),
+      ]);
+
+      setActivityUsed(weeklyStats?.activity_days_used || 0);
+      setRestUsed((weeklyStats?.rest_day_used || 0) >= 1);
+      setCurrentStreak(streakData?.current_streak || 0);
+      setLoadingData(false);
+    }
+    loadData();
+  }, [router]);
+
+  // Derived values
+  const activityRemaining = ACTIVITY_LIMIT - activityUsed;
+  const scoring = activityType ? calculatePoints(
+    activityType,
+    activityType === "run"      ? parseFloat(distance) || 0   : undefined,
+    activityType === "activity" ? parseInt(duration, 10) || 0 : undefined,
+    currentStreak
+  ) : { basePoints: 0, streakBonus: 0, totalPoints: 0, isValid: false };
+  const points = scoring.totalPoints;
   const today  = todayISO();
 
   const submitDisabled =
-    (activityType === "activity" && ACTIVITY_REMAINING <= 0) ||
-    (activityType === "rest"     && MOCK_REST_USED);
+    loadingData ||
+    submitting ||
+    (activityType === "activity" && activityRemaining <= 0) ||
+    (activityType === "rest"     && restUsed);
 
   function getDisabledReason(): string | null {
-    if (activityType === "activity" && ACTIVITY_REMAINING <= 0) return "Maximum 2 activity days reached this week.";
-    if (activityType === "rest"     && MOCK_REST_USED)          return "Rest day already used this week.";
+    if (activityType === "activity" && activityRemaining <= 0) return "Maximum 2 activity days reached this week.";
+    if (activityType === "rest"     && restUsed)               return "Rest day already used this week.";
     return null;
   }
 
@@ -170,7 +191,7 @@ export default function AddActivityPage() {
     const errs: string[] = [];
     if (!activityType) { errs.push("Please select an activity type."); return errs; }
     if (activityType === "run") {
-      if (!distance || parseFloat(distance) <= 0)  errs.push("Please enter a valid distance.");
+      if (!distance || parseFloat(distance) <= 0) errs.push("Please enter a valid distance.");
       const totalSecs = (parseInt(durationMins, 10) || 0) * 60 + (parseInt(durationSecs, 10) || 0);
       if (totalSecs <= 0) errs.push("Please enter a valid duration.");
       const secs = parseInt(durationSecs, 10) || 0;
@@ -180,33 +201,44 @@ export default function AddActivityPage() {
       if (!duration || parseInt(duration, 10) <= 0) errs.push("Please enter a valid duration.");
     }
     if (date > today) errs.push("Date cannot be in the future.");
-    if (activityType === "activity" && ACTIVITY_REMAINING <= 0) errs.push("Maximum 2 activity days reached this week.");
-    if (activityType === "rest"     && MOCK_REST_USED)          errs.push("Rest day already used this week.");
+    if (activityType === "activity" && activityRemaining <= 0) errs.push("Maximum 2 activity days reached this week.");
+    if (activityType === "rest"     && restUsed)               errs.push("Rest day already used this week.");
     return errs;
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const errs = validate();
     if (errs.length) { setErrors(errs); return; }
+    if (!user) return;
     setErrors([]);
-    const payload = {
-      activityType, date, points,
-      ...(activityType === "run" && {
-        distance:    parseFloat(distance),
-        durationMins: parseInt(durationMins, 10) || 0,
-        durationSecs: parseInt(durationSecs, 10) || 0,
-      }),
-      ...(activityType === "activity" && {
-        subtype,
-        duration: parseInt(duration, 10),
-      }),
-    };
-    console.log("Activity logged:", payload);
-    setEarnedPoints(points);
+    setSubmitError(null);
+    setSubmitting(true);
+
+    const result = await logActivity({
+      userId:      user.id,
+      date,
+      activityType: activityType!,
+      distanceKm:   activityType === "run"      ? parseFloat(distance)        : undefined,
+      durationMins: activityType === "run"      ? parseInt(durationMins, 10) || 0
+                  : activityType === "activity" ? parseInt(duration, 10) || 0
+                  : undefined,
+      durationSecs:    activityType === "run"      ? parseInt(durationSecs, 10) || 0 : undefined,
+      activitySubtype: activityType === "activity" ? subtype                         : undefined,
+    });
+
+    setSubmitting(false);
+
+    if (!result.success) {
+      setSubmitError(result.error || "Failed to log activity. Please try again.");
+      return;
+    }
+
+    setEarnedPoints(result.points ?? 0);
+    setEarnedStreak(result.newStreak ?? currentStreak);
     setSubmitted(true);
   }
 
-  function handleReset() {
+  async function handleReset() {
     setActivityType(null);
     setDistance("");
     setDurationMins("");
@@ -216,7 +248,22 @@ export default function AddActivityPage() {
     setSubtype("Gym");
     setSubmitted(false);
     setEarnedPoints(0);
+    setEarnedStreak(0);
     setErrors([]);
+    setSubmitError(null);
+
+    // Refresh weekly stats after logging
+    if (user) {
+      const supabase = createClient();
+      const weekStart = getWeekStart(new Date());
+      const [{ data: weeklyStats }, { data: streakData }] = await Promise.all([
+        supabase.from("weekly_stats").select("*").eq("user_id", user.id).eq("week_start", weekStart).single(),
+        supabase.from("streaks").select("*").eq("user_id", user.id).single(),
+      ]);
+      setActivityUsed(weeklyStats?.activity_days_used || 0);
+      setRestUsed((weeklyStats?.rest_day_used || 0) >= 1);
+      setCurrentStreak(streakData?.current_streak || 0);
+    }
   }
 
   // ── Success state ──────────────────────────────────────────────────────────
@@ -308,7 +355,7 @@ export default function AddActivityPage() {
             marginTop: "6px",
             marginBottom: "44px",
           }}>
-            {MOCK_STREAK}-day streak maintained
+            {earnedStreak}-day streak maintained
           </p>
 
           <button onClick={handleReset} style={{
@@ -391,7 +438,7 @@ export default function AddActivityPage() {
               return (
                 <button
                   key={type}
-                  onClick={() => { setActivityType(type); setErrors([]); }}
+                  onClick={() => { setActivityType(type); setErrors([]); setSubmitError(null); }}
                   style={{
                     flex: 1,
                     padding: "18px 8px",
@@ -428,14 +475,14 @@ export default function AddActivityPage() {
           <p style={{
             fontFamily: "Montserrat, sans-serif",
             fontSize: "11px",
-            color: ACTIVITY_REMAINING > 0 ? "rgba(212,197,169,0.5)" : "rgba(220,90,90,0.8)",
+            color: activityRemaining > 0 ? "rgba(212,197,169,0.5)" : "rgba(220,90,90,0.8)",
             marginTop: "10px",
             marginBottom: "16px",
           }}>
-            {MOCK_ACTIVITY_USED} of {MOCK_ACTIVITY_LIMIT} activity days used this week
+            {activityUsed} of {ACTIVITY_LIMIT} activity days used this week
           </p>
         )}
-        {activityType === "rest" && MOCK_REST_USED && (
+        {activityType === "rest" && restUsed && (
           <p style={{
             fontFamily: "Montserrat, sans-serif",
             fontSize: "11px",
@@ -447,7 +494,7 @@ export default function AddActivityPage() {
             Rest day already used this week
           </p>
         )}
-        {(activityType === null || activityType === "run" || (activityType === "rest" && !MOCK_REST_USED)) && (
+        {(activityType === null || activityType === "run" || (activityType === "rest" && !restUsed)) && (
           <div style={{ marginBottom: "20px" }} />
         )}
 
@@ -511,7 +558,6 @@ export default function AddActivityPage() {
                 <div style={{ marginBottom: "24px" }}>
                   <label style={labelStyle}>Duration</label>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    {/* Minutes */}
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "5px" }}>
                       <input
                         type="number"
@@ -530,8 +576,6 @@ export default function AddActivityPage() {
                         textTransform: "uppercase",
                       }}>Min</span>
                     </div>
-
-                    {/* Separator */}
                     <span style={{
                       fontFamily: "Montserrat, sans-serif",
                       fontSize: "28px",
@@ -540,8 +584,6 @@ export default function AddActivityPage() {
                       lineHeight: 1,
                       marginBottom: "18px",
                     }}>:</span>
-
-                    {/* Seconds */}
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "5px" }}>
                       <input
                         type="number"
@@ -588,14 +630,14 @@ export default function AddActivityPage() {
                       ? `This run will earn ${points} pt${points !== 1 ? "s" : ""}`
                       : "Enter distance to see points preview"}
                   </p>
-                  {MOCK_STREAK > 0 && points > 0 && (
+                  {currentStreak > 0 && scoring.streakBonus > 0 && (
                     <p style={{
                       fontFamily: "Montserrat, sans-serif",
                       fontSize: "11px",
                       color: "rgba(212,197,169,0.5)",
                       margin: "5px 0 0",
                     }}>
-                      +1 streak bonus · {MOCK_STREAK}-day streak
+                      +{scoring.streakBonus} streak bonus · {currentStreak}-day streak
                     </p>
                   )}
                 </div>
@@ -676,14 +718,14 @@ export default function AddActivityPage() {
                   }}>
                     30+ minutes earns 2 base points
                   </p>
-                  {MOCK_STREAK > 0 && (
+                  {currentStreak > 0 && (
                     <p style={{
                       fontFamily: "Montserrat, sans-serif",
                       fontSize: "11px",
                       color: "rgba(212,197,169,0.45)",
                       margin: "5px 0 0",
                     }}>
-                      +1 streak bonus · {MOCK_STREAK}-day streak
+                      +{Math.min(currentStreak, 7)} streak bonus · {currentStreak}-day streak
                     </p>
                   )}
                 </div>
@@ -740,6 +782,26 @@ export default function AddActivityPage() {
           </div>
         )}
 
+        {/* Submit error from server */}
+        {submitError && (
+          <div style={{
+            backgroundColor: "rgba(220,90,90,0.08)",
+            border: "1px solid rgba(220,90,90,0.25)",
+            borderRadius: "12px",
+            padding: "14px 16px",
+            marginBottom: "16px",
+          }}>
+            <p style={{
+              fontFamily: "Montserrat, sans-serif",
+              fontSize: "12px",
+              color: "rgba(220,90,90,0.9)",
+              margin: 0,
+            }}>
+              {submitError}
+            </p>
+          </div>
+        )}
+
         {/* Submit */}
         <button
           onClick={submitDisabled ? undefined : handleSubmit}
@@ -757,7 +819,7 @@ export default function AddActivityPage() {
             cursor: submitDisabled ? "not-allowed" : "pointer",
           }}
         >
-          LOG ACTIVITY
+          {submitting ? "LOGGING…" : "LOG ACTIVITY"}
         </button>
 
         {/* Disabled reason */}
