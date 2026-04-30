@@ -187,12 +187,12 @@ export default function StatsPage() {
           marginBottom: "28px",
         }}>
           {[
-            { label: "Total Points",     value: "142",    unit: "pts"  },
-            { label: "Current Rank",     value: "#1",     unit: ""     },
-            { label: "Current Streak",   value: "8",      unit: " days", fire: true },
-            { label: "Longest Streak",   value: "12",     unit: " days" },
-            { label: "Total Distance",   value: "67.5",   unit: " km"  },
-            { label: "Avg Run Distance", value: "6.1",    unit: " km"  },
+            { label: "Total Points",     value: String(STATS.totalPoints),   unit: "pts"  },
+            { label: "Current Rank",     value: `#${STATS.rank}`,            unit: ""     },
+            { label: "Current Streak",   value: String(STATS.streak),        unit: " days", fire: true },
+            { label: "Longest Streak",   value: String(STATS.longestStreak), unit: " days" },
+            { label: "Total Distance",   value: String(STATS.totalKm),       unit: " km"  },
+            { label: "Avg Run Distance", value: String(STATS.avgRunKm),      unit: " km"  },
           ].map(({ label, value, unit, fire }) => (
             <div key={label} style={{
               backgroundColor: "#0D1829",
