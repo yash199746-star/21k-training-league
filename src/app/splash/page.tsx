@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CountdownPill from "@/components/CountdownPill";
+import { createClient } from "@/lib/supabase-browser";
 
 const quotes = [
   { quote: "No human is ever limited.", author: "Eliud Kipchoge" },
@@ -180,7 +181,11 @@ export default function SplashPage() {
 
   useEffect(() => {
     setSelected(quotes[Math.floor(Math.random() * quotes.length)]);
-  }, []);
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) router.replace("/login");
+    });
+  }, [router]);
 
   return (
     <>

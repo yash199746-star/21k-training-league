@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase-browser";
 
 const MountainSVG = (
   <svg
@@ -24,9 +26,32 @@ const MountainSVG = (
   </svg>
 );
 
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [sent,  setSent]  = useState(false);
+function LoginForm() {
+  const [email, setEmail]     = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent]       = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+  const searchParams          = useSearchParams();
+  const callbackError         = searchParams.get("error");
+
+  async function handleSend() {
+    if (!email || loading) return;
+    setLoading(true);
+    setError(null);
+    const supabase = createClient();
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    setLoading(false);
+    if (otpError) {
+      setError("Failed to send magic link. Please try again.");
+    } else {
+      setSent(true);
+    }
+  }
 
   return (
     <div style={{
@@ -76,6 +101,27 @@ export default function LoginPage() {
         </p>
       </div>
 
+      {/* Callback error banner */}
+      {callbackError && (
+        <div style={{
+          position: "relative",
+          zIndex: 1,
+          width: "100%",
+          maxWidth: "380px",
+          backgroundColor: "rgba(210,70,70,0.15)",
+          border: "1px solid rgba(210,70,70,0.35)",
+          borderRadius: "10px",
+          padding: "10px 14px",
+          marginBottom: "12px",
+          fontFamily: "Montserrat, sans-serif",
+          fontSize: "12px",
+          color: "#E07070",
+          textAlign: "center",
+        }}>
+          Link expired or invalid. Please request a new one.
+        </div>
+      )}
+
       {/* Form */}
       {!sent ? (
         <div style={{
@@ -110,7 +156,9 @@ export default function LoginPage() {
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleSend()}
             placeholder="your@email.com"
+            disabled={loading}
             style={{
               width: "100%",
               background: "rgba(255,255,255,0.04)",
@@ -123,10 +171,23 @@ export default function LoginPage() {
               boxSizing: "border-box",
               marginBottom: "12px",
               outline: "none",
+              opacity: loading ? 0.5 : 1,
             }}
           />
+          {error && (
+            <p style={{
+              color: "#E07070",
+              fontFamily: "Montserrat, sans-serif",
+              fontSize: "12px",
+              marginBottom: "10px",
+              textAlign: "center",
+            }}>
+              {error}
+            </p>
+          )}
           <button
-            onClick={() => email && setSent(true)}
+            onClick={handleSend}
+            disabled={!email || loading}
             style={{
               width: "100%",
               backgroundColor: "#C9B87A",
@@ -138,11 +199,11 @@ export default function LoginPage() {
               padding: "14px",
               borderRadius: "12px",
               border: "none",
-              cursor: email ? "pointer" : "not-allowed",
-              opacity: email ? 1 : 0.4,
+              cursor: email && !loading ? "pointer" : "not-allowed",
+              opacity: email && !loading ? 1 : 0.4,
             }}
           >
-            SEND MAGIC LINK
+            {loading ? "SENDING…" : "SEND MAGIC LINK"}
           </button>
           <p style={{
             color: "rgba(212,197,169,0.4)",
@@ -188,8 +249,31 @@ export default function LoginPage() {
           }}>
             {email}
           </p>
+          <button
+            onClick={() => { setSent(false); setEmail(""); }}
+            style={{
+              marginTop: "20px",
+              background: "none",
+              border: "none",
+              color: "rgba(212,197,169,0.5)",
+              fontFamily: "Montserrat, sans-serif",
+              fontSize: "12px",
+              cursor: "pointer",
+              letterSpacing: "0.05em",
+            }}
+          >
+            Wrong email? Go back
+          </button>
         </div>
       )}
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
