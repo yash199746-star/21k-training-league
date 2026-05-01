@@ -403,14 +403,13 @@ export default function ChallengePage() {
 
     const supabase = createClient();
     const { error } = await supabase.from("challenges").insert({
+      created_by:     userId,
+      week_start:     getNextMonday(),
       title:          formTitle.trim(),
       description:    formDesc.trim(),
       challenge_type: CHALLENGE_TYPE_MAP[formType],
       target_value:   parseFloat(formTarget),
-      week_start:     getNextMonday(),
       is_active:      false,
-      created_by:     userId,
-      bonus_points:   10,
     });
 
     setFormSubmitting(false);
