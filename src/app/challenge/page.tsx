@@ -9,14 +9,18 @@ import { getWeekStart } from "@/lib/scoring";
 
 // ── CM rotation (same as leaderboard / profile) ────────────────────────────
 const CM_ORDER = ["Yash", "Hardik", "Devansh"];
+const APRIL_1_2026_MS = new Date("2026-04-01").getTime();
+
+// Use the Monday of the current week so CM doesn't shift mid-week.
+// new Date("YYYY-MM-DD") is midnight UTC, same as APRIL_1_2026_MS → subtraction is clean.
 function getChallengeMasterName(): string {
-  const APRIL_1_2026 = new Date("2026-04-01").getTime();
-  const wk = Math.floor((Date.now() - APRIL_1_2026) / (7 * 24 * 60 * 60 * 1000));
+  const weekStart = new Date(getWeekStart(new Date())).getTime();
+  const wk = Math.floor((weekStart - APRIL_1_2026_MS) / (7 * 24 * 60 * 60 * 1000));
   return CM_ORDER[((wk % 3) + 3) % 3];
 }
 function getCurrentWeekNumber(): number {
-  const APRIL_1_2026 = new Date("2026-04-01").getTime();
-  return Math.max(1, Math.floor((Date.now() - APRIL_1_2026) / (7 * 24 * 60 * 60 * 1000)) + 1);
+  const weekStart = new Date(getWeekStart(new Date())).getTime();
+  return Math.max(1, Math.floor((weekStart - APRIL_1_2026_MS) / (7 * 24 * 60 * 60 * 1000)) + 1);
 }
 function weekStartToNumber(weekStart: string): number {
   const APRIL_1_2026 = new Date("2026-04-01").getTime();
@@ -298,7 +302,9 @@ export default function ChallengePage() {
       ]);
 
       const myName = myProfile?.name || "";
-      setIsCM(myName.toLowerCase() === cmName.toLowerCase());
+      const isCMNow = myName.trim().toLowerCase() === cmName.trim().toLowerCase();
+      console.log("[CM Debug] weekNum:", weekNum, "| cmName:", cmName, "| myName:", JSON.stringify(myName), "| match:", isCMNow);
+      setIsCM(isCMNow);
 
       // ── Active challenge ───────────────────────────────────────────────
       const active = activeChallenges?.[0] ?? null;

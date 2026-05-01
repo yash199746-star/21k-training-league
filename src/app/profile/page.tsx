@@ -9,14 +9,16 @@ import { getWeekStart } from "@/lib/scoring";
 
 // ── CM rotation (same logic as leaderboard) ────────────────────────────────
 const CM_ORDER = ["Yash", "Hardik", "Devansh"];
+const APRIL_1_2026_MS = new Date("2026-04-01").getTime();
+
 function getChallengeMasterName(): string {
-  const APRIL_1_2026 = new Date("2026-04-01").getTime();
-  const wk = Math.floor((Date.now() - APRIL_1_2026) / (7 * 24 * 60 * 60 * 1000));
+  const weekStart = new Date(getWeekStart(new Date())).getTime();
+  const wk = Math.floor((weekStart - APRIL_1_2026_MS) / (7 * 24 * 60 * 60 * 1000));
   return CM_ORDER[((wk % 3) + 3) % 3];
 }
 function getCurrentWeekNumber(): number {
-  const APRIL_1_2026 = new Date("2026-04-01").getTime();
-  return Math.max(1, Math.floor((Date.now() - APRIL_1_2026) / (7 * 24 * 60 * 60 * 1000)) + 1);
+  const weekStart = new Date(getWeekStart(new Date())).getTime();
+  return Math.max(1, Math.floor((weekStart - APRIL_1_2026_MS) / (7 * 24 * 60 * 60 * 1000)) + 1);
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
