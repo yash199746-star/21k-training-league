@@ -279,6 +279,7 @@ export default function HomePage() {
 
   useEffect(() => {
     async function fetchData() {
+      console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace("/login"); return; }

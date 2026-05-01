@@ -36,10 +36,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // Redirect authenticated users to splash on every fresh session
+  // Show splash on every fresh page load unless arriving from it
   if (user && pathname === '/') {
-    const splashShown = request.cookies.get('splash_shown_session')
-    if (!splashShown) {
+    const fromSplash = request.nextUrl.searchParams.get('from') === 'splash'
+    if (!fromSplash) {
       return NextResponse.redirect(new URL('/splash', request.url))
     }
   }
