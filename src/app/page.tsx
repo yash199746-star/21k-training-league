@@ -360,7 +360,11 @@ export default function HomePage() {
         .skeleton-pulse { animation: pulse 1.6s ease-in-out infinite; }
       `}</style>
 
-      <div style={{ padding: "52px 20px 24px", backgroundColor: "#1A2744", minHeight: "100vh" }}>
+      <div style={{ padding: "52px 20px 24px", minHeight: "100vh", position: "relative" }}>
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0, backgroundImage: "url(/ladakh.png)", backgroundSize: "cover", backgroundPosition: "center 40%", backgroundRepeat: "no-repeat", backgroundAttachment: "scroll", pointerEvents: "none" }}>
+          <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(13,24,41,0.88)" }} />
+        </div>
+        <div style={{ position: "relative", zIndex: 1 }}>
 
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "20px" }}>
@@ -422,6 +426,7 @@ export default function HomePage() {
           )}
         </div>
 
+        </div>{/* /zIndex wrapper */}
       </div>
     </AppLayout>
   );

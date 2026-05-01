@@ -15,8 +15,9 @@ function PhotoBackground() {
       zIndex: 0,
       backgroundImage: "url(/ladakh.png)",
       backgroundSize: "cover",
-      backgroundPosition: "center",
+      backgroundPosition: "center 40%",
       backgroundRepeat: "no-repeat",
+      backgroundAttachment: "scroll",
     }}>
       <div style={{
         position: "absolute",
@@ -24,7 +25,7 @@ function PhotoBackground() {
         left: 0,
         width: "100%",
         height: "100%",
-        background: "linear-gradient(to bottom, rgba(13,24,41,0.75) 0%, rgba(13,24,41,0.85) 60%, rgba(13,24,41,0.95) 100%)",
+        background: "linear-gradient(to bottom, rgba(13,24,41,0.6) 0%, rgba(13,24,41,0.75) 50%, rgba(13,24,41,0.92) 100%)",
       }} />
     </div>
   );

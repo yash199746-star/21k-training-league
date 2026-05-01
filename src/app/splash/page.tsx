@@ -162,8 +162,9 @@ function PhotoBackground() {
       zIndex: 0,
       backgroundImage: "url(/ladakh.png)",
       backgroundSize: "cover",
-      backgroundPosition: "center",
+      backgroundPosition: "center 40%",
       backgroundRepeat: "no-repeat",
+      backgroundAttachment: "scroll",
     }}>
       <div style={{
         position: "absolute",
@@ -171,7 +172,7 @@ function PhotoBackground() {
         left: 0,
         width: "100%",
         height: "100%",
-        background: "linear-gradient(to bottom, rgba(13,24,41,0.75) 0%, rgba(13,24,41,0.85) 60%, rgba(13,24,41,0.95) 100%)",
+        background: "linear-gradient(to bottom, rgba(13,24,41,0.6) 0%, rgba(13,24,41,0.75) 50%, rgba(13,24,41,0.92) 100%)",
       }} />
     </div>
   );
@@ -207,76 +208,75 @@ export default function SplashPage() {
         style={{
           position: "relative",
           minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          overflow: "hidden",
           cursor: "pointer",
           userSelect: "none",
         }}
       >
         <PhotoBackground />
 
-        {/* Countdown pill */}
-        <div style={{ paddingTop: "52px", position: "relative", zIndex: 10 }}>
-          <CountdownPill />
-        </div>
-
-        {/* Quote area — empty on server, filled on client */}
+        {/* Content — flex-start so pill + quote stack from top, tap hint pinned to bottom */}
         <div style={{
-          flex: 1,
+          position: "relative",
+          zIndex: 1,
+          minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
+          justifyContent: "flex-start",
           alignItems: "center",
-          justifyContent: "center",
-          padding: "0 10%",
-          position: "relative",
-          zIndex: 10,
-          textAlign: "center",
+          paddingTop: "8vh",
+          paddingBottom: "8vh",
+          paddingLeft: "28px",
+          paddingRight: "28px",
         }}>
-          {selected && (
-            <>
-              <p style={{
-                fontFamily: "'Playfair Display', Georgia, serif",
-                fontStyle: "italic",
-                fontSize: "clamp(20px, 5.5vw, 28px)",
-                fontWeight: 600,
-                color: "#F5F2ED",
-                lineHeight: 1.6,
-                marginBottom: "22px",
-              }}>
-                &ldquo;{selected.quote}&rdquo;
-              </p>
-              <p style={{
-                fontFamily: "Montserrat, sans-serif",
-                fontSize: "13px",
-                fontWeight: 500,
-                color: "#C9B87A",
-                letterSpacing: "0.06em",
-              }}>
-                &mdash; {selected.author}
-              </p>
-            </>
-          )}
-        </div>
 
-        {/* Tap to continue */}
-        <div style={{
-          paddingBottom: "calc(38vh + 28px)",
-          position: "relative",
-          zIndex: 10,
-        }}>
-          <p style={{
-            fontFamily: "Montserrat, sans-serif",
-            fontSize: "10px",
-            fontWeight: 700,
-            color: "#C9B87A",
-            letterSpacing: "0.28em",
-            textTransform: "uppercase",
-            animation: "gentlePulse 2.4s ease-in-out infinite",
-          }}>
-            Tap Anywhere to Continue
-          </p>
+          {/* Countdown pill */}
+          <div style={{ marginBottom: "12vh" }}>
+            <CountdownPill />
+          </div>
+
+          {/* Quote */}
+          <div style={{ textAlign: "center", maxWidth: "480px", flex: 1 }}>
+            {selected && (
+              <>
+                <p style={{
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontStyle: "italic",
+                  fontSize: "32px",
+                  fontWeight: 600,
+                  color: "#F5F2ED",
+                  lineHeight: 1.5,
+                  marginBottom: "22px",
+                }}>
+                  &ldquo;{selected.quote}&rdquo;
+                </p>
+                <p style={{
+                  fontFamily: "Montserrat, sans-serif",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  color: "#C9B87A",
+                  letterSpacing: "0.06em",
+                }}>
+                  &mdash; {selected.author}
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* Tap to continue — pinned to bottom */}
+          <div style={{ marginTop: "auto" }}>
+            <p style={{
+              fontFamily: "Montserrat, sans-serif",
+              fontSize: "10px",
+              fontWeight: 700,
+              color: "#C9B87A",
+              letterSpacing: "0.28em",
+              textTransform: "uppercase",
+              animation: "gentlePulse 2.4s ease-in-out infinite",
+            }}>
+              Tap Anywhere to Continue
+            </p>
+          </div>
+
         </div>
       </div>
     </>

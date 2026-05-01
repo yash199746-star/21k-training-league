@@ -158,7 +158,11 @@ export default function AdminPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#0D1829", padding: "52px 20px 60px" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "#0D1829", padding: "52px 20px 60px", position: "relative" }}>
+      <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0, backgroundImage: "url(/ladakh.png)", backgroundSize: "cover", backgroundPosition: "center 40%", backgroundRepeat: "no-repeat", backgroundAttachment: "scroll", pointerEvents: "none" }}>
+        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(13,24,41,0.88)" }} />
+      </div>
+      <div style={{ position: "relative", zIndex: 1 }}>
 
       {/* Back button */}
       <Link href="/" style={{
@@ -620,6 +624,7 @@ export default function AdminPage() {
         )}
       </div>
 
+      </div>{/* /zIndex wrapper */}
     </div>
   );
 }

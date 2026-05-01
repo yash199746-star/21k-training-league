@@ -279,7 +279,7 @@ export default function AddActivityPage() {
         `}</style>
         <div style={{
           minHeight: "100vh",
-          backgroundColor: "#1A2744",
+          position: "relative",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -287,6 +287,10 @@ export default function AddActivityPage() {
           padding: "40px 24px 100px",
           textAlign: "center",
         }}>
+          <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0, backgroundImage: "url(/ladakh.png)", backgroundSize: "cover", backgroundPosition: "center 40%", backgroundRepeat: "no-repeat", backgroundAttachment: "scroll", pointerEvents: "none" }}>
+            <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(13,24,41,0.88)" }} />
+          </div>
+          <div style={{ position: "relative", zIndex: 1, width: "100%" }}>
           <div className="check-pop" style={{
             width: "84px",
             height: "84px",
@@ -390,6 +394,7 @@ export default function AddActivityPage() {
           }}>
             VIEW LEADERBOARD
           </button>
+          </div>{/* /zIndex wrapper */}
         </div>
       </AppLayout>
     );
@@ -400,7 +405,11 @@ export default function AddActivityPage() {
 
   return (
     <AppLayout>
-      <div style={{ minHeight: "100vh", backgroundColor: "#1A2744", padding: "52px 20px 110px" }}>
+      <div style={{ minHeight: "100vh", padding: "52px 20px 110px", position: "relative" }}>
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0, backgroundImage: "url(/ladakh.png)", backgroundSize: "cover", backgroundPosition: "center 40%", backgroundRepeat: "no-repeat", backgroundAttachment: "scroll", pointerEvents: "none" }}>
+          <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(13,24,41,0.88)" }} />
+        </div>
+        <div style={{ position: "relative", zIndex: 1 }}>
 
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "28px" }}>
@@ -833,6 +842,7 @@ export default function AddActivityPage() {
             {disabledReason}
           </p>
         )}
+        </div>{/* /zIndex wrapper */}
       </div>
     </AppLayout>
   );

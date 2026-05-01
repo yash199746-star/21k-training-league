@@ -286,7 +286,11 @@ export default function ProfilePage() {
     return (
       <AppLayout>
         <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}.sp{animation:pulse 1.6s ease-in-out infinite}`}</style>
-        <div style={{ minHeight: "100vh", backgroundColor: "#1A2744", padding: "52px 20px 100px" }}>
+        <div style={{ minHeight: "100vh", padding: "52px 20px 100px", position: "relative" }}>
+          <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0, backgroundImage: "url(/ladakh.png)", backgroundSize: "cover", backgroundPosition: "center 40%", backgroundRepeat: "no-repeat", backgroundAttachment: "scroll", pointerEvents: "none" }}>
+            <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(13,24,41,0.88)" }} />
+          </div>
+          <div style={{ position: "relative", zIndex: 1 }}>
           <div style={{ textAlign: "center", marginBottom: "28px" }}>
             <div className="sp" style={{ height: "36px", width: "120px", borderRadius: "8px", backgroundColor: "rgba(212,197,169,0.07)", margin: "0 auto 14px" }} />
             <div style={{ display: "flex", justifyContent: "center" }}><CountdownPill /></div>
@@ -318,6 +322,7 @@ export default function ProfilePage() {
               </div>
             ))}
           </div>
+          </div>{/* /zIndex wrapper */}
         </div>
       </AppLayout>
     );
@@ -328,7 +333,11 @@ export default function ProfilePage() {
   // ── Loaded ────────────────────────────────────────────────────────────────
   return (
     <AppLayout>
-      <div style={{ minHeight: "100vh", backgroundColor: "#1A2744", padding: "52px 20px 100px" }}>
+      <div style={{ minHeight: "100vh", padding: "52px 20px 100px", position: "relative" }}>
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0, backgroundImage: "url(/ladakh.png)", backgroundSize: "cover", backgroundPosition: "center 40%", backgroundRepeat: "no-repeat", backgroundAttachment: "scroll", pointerEvents: "none" }}>
+          <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(13,24,41,0.88)" }} />
+        </div>
+        <div style={{ position: "relative", zIndex: 1 }}>
 
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "28px" }}>
@@ -535,6 +544,7 @@ export default function ProfilePage() {
           </button>
         </div>
 
+        </div>{/* /zIndex wrapper */}
       </div>
     </AppLayout>
   );
