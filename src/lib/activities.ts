@@ -7,7 +7,6 @@ export async function logActivity({
   activityType,
   distanceKm,
   durationMins,
-  _durationSecs,
   activitySubtype,
 }: {
   userId: string
@@ -15,7 +14,6 @@ export async function logActivity({
   activityType: 'run' | 'activity' | 'rest'
   distanceKm?: number
   durationMins?: number
-  _durationSecs?: number
   activitySubtype?: string
 }) {
   const supabase = createClient()
