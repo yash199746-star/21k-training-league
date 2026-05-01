@@ -36,6 +36,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
+  // Redirect authenticated users to splash on every fresh session
+  if (user && pathname === '/') {
+    const splashShown = request.cookies.get('splash_shown_session')
+    if (!splashShown) {
+      return NextResponse.redirect(new URL('/splash', request.url))
+    }
+  }
+
   return response
 }
 

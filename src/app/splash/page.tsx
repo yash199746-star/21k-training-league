@@ -187,6 +187,12 @@ export default function SplashPage() {
     });
   }, [router]);
 
+  function handleContinue() {
+    // Session cookie — no max-age means it expires when the browser is closed
+    document.cookie = "splash_shown_session=true; path=/";
+    router.push("/");
+  }
+
   return (
     <>
       <style>{`
@@ -197,7 +203,7 @@ export default function SplashPage() {
       `}</style>
 
       <div
-        onClick={() => router.push("/")}
+        onClick={handleContinue}
         style={{
           position: "relative",
           minHeight: "100vh",
