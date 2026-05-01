@@ -222,7 +222,7 @@ export default function AddActivityPage() {
       durationMins: activityType === "run"      ? parseInt(durationMins, 10) || 0
                   : activityType === "activity" ? parseInt(duration, 10) || 0
                   : undefined,
-      durationSecs:    activityType === "run"      ? parseInt(durationSecs, 10) || 0 : undefined,
+      _durationSecs:   activityType === "run"      ? parseInt(durationSecs, 10) || 0 : undefined,
       activitySubtype: activityType === "activity" ? subtype                         : undefined,
     });
 

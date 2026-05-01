@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match \"git|github\" } | Select-Object Name; Get-ChildItem \"C:\\\\Users\\\\ext.yash.shah\\\\AppData\\\\Local\\\\\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match \"git|github\" } | Select-Object Name)"
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match \"git|github\" } | Select-Object Name; Get-ChildItem \"C:\\\\Users\\\\ext.yash.shah\\\\AppData\\\\Local\\\\\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match \"git|github\" } | Select-Object Name)",
+      "Bash(npx tsc *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(node -e \"require\\('recharts'\\)\")",
+      "Bash(npm install *)"
     ]
   }
 }
