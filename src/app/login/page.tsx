@@ -4,28 +4,31 @@ import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 
-const MountainSVG = (
-  <svg
-    viewBox="0 0 430 932"
-    xmlns="http://www.w3.org/2000/svg"
-    style={{
+function PhotoBackground() {
+  return (
+    <div style={{
       position: "fixed",
       top: 0,
       left: 0,
       width: "100%",
       height: "100%",
       zIndex: 0,
-      pointerEvents: "none",
-    }}
-    preserveAspectRatio="xMidYMax slice"
-  >
-    <rect width="430" height="932" fill="#0D1829" />
-    <path d="M0 620 Q50 560 100 580 Q150 530 200 545 Q240 510 280 528 Q320 500 360 518 Q395 505 430 515 L430 932 L0 932 Z" fill="#162033" />
-    <path d="M0 680 Q40 630 90 648 Q130 610 175 625 Q205 595 235 608 Q265 595 295 610 Q335 625 375 612 Q405 620 430 615 L430 932 L0 932 Z" fill="#1A2744" />
-    <path d="M0 750 Q30 710 70 725 Q100 695 130 710 Q155 678 180 692 L215 620 L250 692 Q275 678 300 710 Q330 695 360 725 Q395 710 430 728 L430 932 L0 932 Z" fill="#1E2E50" />
-    <path d="M0 932 L0 800 Q50 775 100 788 Q140 765 175 778 Q195 755 215 620 Q235 755 255 778 Q290 765 330 788 Q375 775 430 795 L430 932 Z" fill="#243358" />
-  </svg>
-);
+      backgroundImage: "url(/ladakh.png)",
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+    }}>
+      <div style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        background: "linear-gradient(to bottom, rgba(13,24,41,0.75) 0%, rgba(13,24,41,0.85) 60%, rgba(13,24,41,0.95) 100%)",
+      }} />
+    </div>
+  );
+}
 
 function LoginForm() {
   const [email, setEmail]     = useState("");
@@ -65,7 +68,7 @@ function LoginForm() {
       padding: "24px",
       position: "relative",
     }}>
-      {MountainSVG}
+      <PhotoBackground />
 
       <div style={{ position: "relative", zIndex: 10, width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
 
