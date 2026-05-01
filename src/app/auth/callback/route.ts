@@ -3,11 +3,11 @@ import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=true`)
+    return NextResponse.redirect(new URL('/login?error=true', request.url))
   }
 
   const cookieStore = cookies()
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error || !session) {
-    return NextResponse.redirect(`${origin}/login?error=true`)
+    return NextResponse.redirect(new URL('/login?error=true', request.url))
   }
 
   const { data: profile } = await supabase
@@ -50,5 +50,5 @@ export async function GET(request: NextRequest) {
     })
   }
 
-  return NextResponse.redirect(`${origin}/splash`)
+  return NextResponse.redirect(new URL('/splash', request.url))
 }

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import AppLayout from "@/components/AppLayout";
 import CountdownPill from "@/components/CountdownPill";
 import { createClient } from "@/lib/supabase-browser";
-import { getWeekStart } from "@/lib/scoring";
 
 type ActivityType = "run" | "activity" | "rest" | "none";
 
@@ -40,17 +39,23 @@ const activityStyles: Record<ActivityType, { bg: string; color: string; border: 
 };
 
 const CM_ORDER = ["Yash", "Hardik", "Devansh"];
-const APRIL_1_2026_MS = new Date("2026-04-01").getTime();
+// April 1 2026 UTC — epoch for all week calculations
+const EPOCH_MS = Date.UTC(2026, 3, 1);
+const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+function weeksFromEpoch(): number {
+  const now = new Date();
+  const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.floor((todayUTC - EPOCH_MS) / MS_PER_WEEK);
+}
 
 function getChallengeMasterName(): string {
-  const weekStart = new Date(getWeekStart(new Date())).getTime();
-  const wk = Math.floor((weekStart - APRIL_1_2026_MS) / (7 * 24 * 60 * 60 * 1000));
+  const wk = weeksFromEpoch();
   return CM_ORDER[((wk % 3) + 3) % 3];
 }
 
 function getCurrentWeekNumber(): number {
-  const weekStart = new Date(getWeekStart(new Date())).getTime();
-  return Math.max(1, Math.floor((weekStart - APRIL_1_2026_MS) / (7 * 24 * 60 * 60 * 1000)) + 1);
+  return Math.max(1, weeksFromEpoch() + 1);
 }
 
 function todayActivityFor(activities: RawActivity[], userId: string, today: string): {
