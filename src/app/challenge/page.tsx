@@ -277,13 +277,16 @@ export default function ChallengePage() {
       const cmName       = getChallengeMasterName();
       setCurrentWeekNum(weekNum);
 
+      console.log("[Challenge Debug] getWeekStart(new Date()):", weekStart);
+      console.log("[Challenge Debug] querying challenges where is_active=true (no week_start filter)");
+
       // Fetch profile name, all profiles, my week activities, my streak, active challenge, past challenges — all in parallel
       const [
         { data: myProfile },
         { data: allProfiles },
         { data: weekActs },
         { data: streakRow },
-        { data: activeChallenges },
+        { data: activeChallenges, error: activeChallengesError },
         { data: pastChallenges },
       ] = await Promise.all([
         supabase.from("profiles").select("name").eq("id", user.id).single(),
@@ -293,13 +296,18 @@ export default function ChallengePage() {
           .eq("user_id", user.id)
           .gte("date", weekStart),
         supabase.from("streaks").select("current_streak").eq("user_id", user.id).single(),
-        supabase.from("challenges").select("*").eq("is_active", true).eq("week_start", weekStart),
+        supabase.from("challenges").select("*").eq("is_active", true),
         supabase.from("challenges")
           .select("id, title, week_start")
           .eq("is_active", false)
           .order("week_start", { ascending: false })
           .limit(3),
       ]);
+
+      console.log("[Challenge Debug] activeChallenges raw response:", activeChallenges);
+      console.log("[Challenge Debug] activeChallenges error:", activeChallengesError);
+      console.log("[Challenge Debug] DB week_start values:", activeChallenges?.map(c => c.week_start));
+      console.log("[Challenge Debug] computed weekStart:", weekStart, "| match?", activeChallenges?.some(c => c.week_start === weekStart));
 
       const myName = myProfile?.name || "";
       const isCMNow = myName.trim().toLowerCase() === cmName.trim().toLowerCase();
