@@ -289,14 +289,17 @@ export default function HomePage() {
       setWeekNum(getCurrentWeekNumber());
 
       const [
-        { data: profiles },
-        { data: activities },
+        { data: profiles, error: profilesError },
+        { data: activities, error: activitiesError },
         { data: streaks },
       ] = await Promise.all([
         supabase.from("profiles").select("id, name, email"),
         supabase.from("activities").select("user_id, date, activity_type, activity_subtype, distance_km, total_points_that_day"),
         supabase.from("streaks").select("user_id, current_streak"),
       ]);
+
+      console.log('[Leaderboard] profiles response:', profiles, 'error:', profilesError);
+      console.log('[Leaderboard] activities response:', activities, 'error:', activitiesError);
 
       if (!profiles) { setLoading(false); return; }
 
