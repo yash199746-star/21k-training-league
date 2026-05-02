@@ -513,6 +513,77 @@ export default function ChallengePage() {
           )}
         </div>
 
+        {/* ── Challenge creation form ── */}
+        {showForm && !formSubmitted && (
+          <div style={{
+            backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+            border: "1px solid rgba(212,197,169,0.12)",
+            borderRadius: "16px", padding: "20px", marginBottom: "28px",
+          }}>
+            <p style={{ ...sectionTitle, marginBottom: "18px" }}>New Challenge — Week {nextWeekNum}</p>
+
+            <div style={{ marginBottom: "16px" }}>
+              <label style={formLabelStyle}>Challenge Title</label>
+              <input type="text" value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="e.g. The Summit Push" style={inputStyle} />
+            </div>
+
+            <div style={{ marginBottom: "16px" }}>
+              <label style={formLabelStyle}>Description</label>
+              <textarea
+                value={formDesc} onChange={e => setFormDesc(e.target.value)}
+                placeholder="Describe the challenge..." rows={3}
+                style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5, fontFamily: "Montserrat, sans-serif" }}
+              />
+            </div>
+
+            <div style={{ marginBottom: "16px" }}>
+              <label style={formLabelStyle}>Challenge Type</label>
+              <select
+                value={formType} onChange={e => setFormType(e.target.value)}
+                style={{
+                  ...inputStyle, appearance: "none",
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(212,197,169,0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center",
+                  cursor: "pointer", colorScheme: "dark" as React.CSSProperties["colorScheme"],
+                }}
+              >
+                {CHALLENGE_TYPES.map(t => <option key={t} value={t} style={{ backgroundColor: "rgba(13,24,41,0.55)" }}>{t}</option>)}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: "20px" }}>
+              <label style={formLabelStyle}>Target ({TARGET_UNITS[formType]})</label>
+              <input
+                type="number" value={formTarget} onChange={e => setFormTarget(e.target.value)}
+                placeholder={formType === "Total Distance" ? "30" : formType === "Number of Runs" ? "4" : "5"}
+                min="0" step={formType.includes("Distance") ? "0.5" : "1"}
+                style={inputStyle}
+              />
+            </div>
+
+            {formErrors.length > 0 && (
+              <div style={{ backgroundColor: "rgba(220,90,90,0.08)", border: "1px solid rgba(220,90,90,0.25)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px" }}>
+                {formErrors.map((e, i) => (
+                  <p key={i} style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(220,90,90,0.9)", margin: i === 0 ? 0 : "4px 0 0" }}>{e}</p>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={handleSubmitChallenge}
+              disabled={formSubmitting}
+              style={{
+                width: "100%", backgroundColor: formSubmitting ? "rgba(201,184,122,0.4)" : "#C9B87A",
+                color: "#0D1829", fontFamily: "Montserrat, sans-serif", fontWeight: 700,
+                fontSize: "13px", letterSpacing: "0.18em", padding: "16px",
+                borderRadius: "12px", border: "none", cursor: formSubmitting ? "not-allowed" : "pointer",
+              }}
+            >
+              {formSubmitting ? "SUBMITTING…" : "SUBMIT CHALLENGE"}
+            </button>
+          </div>
+        )}
+
         {/* ── Section 1: Active Challenge Card ── */}
         <p style={sectionTitle}>Active Challenge</p>
 
@@ -631,78 +702,7 @@ export default function ChallengePage() {
           </div>
         )}
 
-        {/* ── Section 4: Create Challenge Form ── */}
-        {showForm && !formSubmitted && (
-          <div style={{
-            backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-            border: "1px solid rgba(212,197,169,0.12)",
-            borderRadius: "16px", padding: "20px", marginBottom: "28px",
-          }}>
-            <p style={{ ...sectionTitle, marginBottom: "18px" }}>New Challenge — Week {nextWeekNum}</p>
-
-            <div style={{ marginBottom: "16px" }}>
-              <label style={formLabelStyle}>Challenge Title</label>
-              <input type="text" value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="e.g. The Summit Push" style={inputStyle} />
-            </div>
-
-            <div style={{ marginBottom: "16px" }}>
-              <label style={formLabelStyle}>Description</label>
-              <textarea
-                value={formDesc} onChange={e => setFormDesc(e.target.value)}
-                placeholder="Describe the challenge..." rows={3}
-                style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5, fontFamily: "Montserrat, sans-serif" }}
-              />
-            </div>
-
-            <div style={{ marginBottom: "16px" }}>
-              <label style={formLabelStyle}>Challenge Type</label>
-              <select
-                value={formType} onChange={e => setFormType(e.target.value)}
-                style={{
-                  ...inputStyle, appearance: "none",
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(212,197,169,0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-                  backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center",
-                  cursor: "pointer", colorScheme: "dark" as React.CSSProperties["colorScheme"],
-                }}
-              >
-                {CHALLENGE_TYPES.map(t => <option key={t} value={t} style={{ backgroundColor: "rgba(13,24,41,0.55)" }}>{t}</option>)}
-              </select>
-            </div>
-
-            <div style={{ marginBottom: "20px" }}>
-              <label style={formLabelStyle}>Target ({TARGET_UNITS[formType]})</label>
-              <input
-                type="number" value={formTarget} onChange={e => setFormTarget(e.target.value)}
-                placeholder={formType === "Total Distance" ? "30" : formType === "Number of Runs" ? "4" : "5"}
-                min="0" step={formType.includes("Distance") ? "0.5" : "1"}
-                style={inputStyle}
-              />
-            </div>
-
-            {formErrors.length > 0 && (
-              <div style={{ backgroundColor: "rgba(220,90,90,0.08)", border: "1px solid rgba(220,90,90,0.25)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px" }}>
-                {formErrors.map((e, i) => (
-                  <p key={i} style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(220,90,90,0.9)", margin: i === 0 ? 0 : "4px 0 0" }}>{e}</p>
-                ))}
-              </div>
-            )}
-
-            <button
-              onClick={handleSubmitChallenge}
-              disabled={formSubmitting}
-              style={{
-                width: "100%", backgroundColor: formSubmitting ? "rgba(201,184,122,0.4)" : "#C9B87A",
-                color: "#0D1829", fontFamily: "Montserrat, sans-serif", fontWeight: 700,
-                fontSize: "13px", letterSpacing: "0.18em", padding: "16px",
-                borderRadius: "12px", border: "none", cursor: formSubmitting ? "not-allowed" : "pointer",
-              }}
-            >
-              {formSubmitting ? "SUBMITTING…" : "SUBMIT CHALLENGE"}
-            </button>
-          </div>
-        )}
-
-        {/* ── Section 5: Past Challenges ── */}
+        {/* ── Section 4: Past Challenges ── */}
         <p style={sectionTitle}>Past Challenges</p>
         {pastList.length === 0 ? (
           <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(212,197,169,0.35)", textAlign: "center", padding: "16px 0" }}>
