@@ -477,9 +477,9 @@ export default function ChallengePage() {
 
   const nextWeekNum = currentWeekNum + 1;
   const nextWeekCM = getChallengeMasterForWeek(1);
-  const isThursdayToSunday = [4, 5, 6, 0].includes(new Date().getUTCDay());
-  const bannerCondition = isThursdayToSunday && myName.trim().toLowerCase() === nextWeekCM.trim().toLowerCase();
-  console.log("[CM Banner Debug] nextWeekCM:", nextWeekCM, "| myName:", myName, "| isThurSun:", isThursdayToSunday, "| show:", bannerCondition);
+  // TEMP: day-of-week check removed for testing — show banner whenever name matches next week's CM
+  const bannerCondition = myName.trim().toLowerCase() === nextWeekCM.trim().toLowerCase();
+  console.log("[CM Banner Debug] nextWeekCM:", nextWeekCM, "| myName:", myName, "| show:", bannerCondition);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (

@@ -72,11 +72,6 @@ const TYPE_CARDS: {
   { type: "rest",     label: "Rest Day", Icon: RestIcon      },
 ];
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-function todayISO() {
-  return new Date().toISOString().split("T")[0];
-}
-
 // ── Shared input styles ───────────────────────────────────────────────────────
 const labelStyle: React.CSSProperties = {
   fontFamily: "Montserrat, sans-serif",
@@ -149,12 +144,30 @@ export default function AddActivityPage() {
   const [durationMins, setDurationMins] = useState("");
   const [durationSecs, setDurationSecs] = useState("");
   const [duration,     setDuration]     = useState("");
-  const [date,         setDate]         = useState(todayISO);
+  const [date,         setDate]         = useState("");
+  const [minDate,      setMinDate]      = useState("");
+  const [maxDate,      setMaxDate]      = useState("");
   const [subtype,      setSubtype]      = useState("Gym");
   const [submitted,    setSubmitted]    = useState(false);
   const [earnedPoints, setEarnedPoints] = useState(0);
   const [earnedStreak, setEarnedStreak] = useState(0);
   const [errors,       setErrors]       = useState<string[]>([]);
+
+  // Set date bounds client-side using local time (avoids UTC mismatch on Vercel)
+  useEffect(() => {
+    const now = new Date();
+    const todayStr = now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const yesterdayStr = yesterday.getFullYear() + '-' +
+      String(yesterday.getMonth() + 1).padStart(2, '0') + '-' +
+      String(yesterday.getDate()).padStart(2, '0');
+    setMinDate(yesterdayStr);
+    setMaxDate(todayStr);
+    setDate(todayStr);
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -192,13 +205,6 @@ export default function AddActivityPage() {
       .then(({ data }) => setDateAlreadyLogged((data?.length || 0) > 0));
   }, [date, user]);
 
-  // Derived values
-  const today        = todayISO();
-  const _todayDate   = new Date();
-  const _yestDate    = new Date(_todayDate);
-  _yestDate.setDate(_todayDate.getDate() - 1);
-  const yesterdayStr = _yestDate.toISOString().split("T")[0];
-
   const activityRemaining = ACTIVITY_LIMIT - activityUsed;
   const scoring = activityType ? calculatePoints(
     activityType,
@@ -209,9 +215,9 @@ export default function AddActivityPage() {
   const points = scoring.totalPoints;
 
   const nextWeekCM        = getChallengeMasterForWeek(1);
-  const isThursdayToSunday = [4, 5, 6, 0].includes(new Date().getUTCDay());
-  const cmBannerCondition = isThursdayToSunday && myName.trim().toLowerCase() === nextWeekCM.trim().toLowerCase();
-  console.log("[CM Banner Debug] nextWeekCM:", nextWeekCM, "| myName:", myName, "| isThurSun:", isThursdayToSunday, "| show:", cmBannerCondition);
+  // TEMP: day-of-week check removed for testing — show banner whenever name matches next week's CM
+  const cmBannerCondition = myName.trim().toLowerCase() === nextWeekCM.trim().toLowerCase();
+  console.log("[CM Banner Debug] nextWeekCM:", nextWeekCM, "| myName:", myName, "| show:", cmBannerCondition);
 
   const submitDisabled =
     loadingData ||
@@ -221,7 +227,7 @@ export default function AddActivityPage() {
     (activityType === "rest"     && restUsed);
 
   function getDisabledReason(): string | null {
-    if (dateAlreadyLogged) return date === today ? "Activity already logged for today." : `Activity already logged for ${date}.`;
+    if (dateAlreadyLogged) return date === maxDate ? "Activity already logged for today." : "Activity already logged for yesterday.";
     if (activityType === "activity" && activityRemaining <= 0) return "Maximum 2 activity days reached this week.";
     if (activityType === "rest"     && restUsed)               return "Rest day already used this week.";
     return null;
@@ -240,7 +246,7 @@ export default function AddActivityPage() {
     if (activityType === "activity") {
       if (!duration || parseInt(duration, 10) <= 0) errs.push("Please enter a valid duration.");
     }
-    if (date < yesterdayStr || date > today) errs.push("Can only log activities for today or yesterday.");
+    if (minDate && maxDate && (date < minDate || date > maxDate)) errs.push("Can only log activities for today or yesterday.");
     if (activityType === "activity" && activityRemaining <= 0) errs.push("Maximum 2 activity days reached this week.");
     if (activityType === "rest"     && restUsed)               errs.push("Rest day already used this week.");
     return errs;
@@ -467,7 +473,7 @@ export default function AddActivityPage() {
               fontWeight: 600,
               margin: 0,
             }}>
-              {date === today ? "Activity already logged for today." : "Activity already logged for yesterday."}
+              {date === maxDate ? "Activity already logged for today." : "Activity already logged for yesterday."}
             </p>
           </div>
         )}
@@ -662,7 +668,7 @@ export default function AddActivityPage() {
                 {/* Date */}
                 <div style={{ marginBottom: "20px" }}>
                   <label style={labelStyle}>Date</label>
-                  <input type="date" value={date} min={yesterdayStr} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
+                  <input type="date" value={date} min={minDate} max={maxDate} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
                 </div>
 
                 {/* Points preview */}
@@ -752,7 +758,7 @@ export default function AddActivityPage() {
                 {/* Date */}
                 <div style={{ marginBottom: "20px" }}>
                   <label style={labelStyle}>Date</label>
-                  <input type="date" value={date} min={yesterdayStr} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
+                  <input type="date" value={date} min={minDate} max={maxDate} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
                 </div>
 
                 {/* Note */}
@@ -790,7 +796,7 @@ export default function AddActivityPage() {
               <>
                 <div style={{ marginBottom: "20px" }}>
                   <label style={labelStyle}>Date</label>
-                  <input type="date" value={date} min={yesterdayStr} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
+                  <input type="date" value={date} min={minDate} max={maxDate} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
                 </div>
                 <div style={{
                   backgroundColor: "rgba(212,197,169,0.04)",
