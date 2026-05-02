@@ -14,7 +14,23 @@ type ActivityType = "run" | "activity" | "rest" | null;
 const SUBTYPES = ["Walk", "Cycle", "Gym", "Yoga", "Swim", "Sports", "Other"];
 const ACTIVITY_LIMIT = 2;
 
-// ── Card icon components ────────────────────────────────────────────────────
+// ── CM rotation ─────────────────────────────────────────────────────────────
+const CM_ORDER = ["Yash", "Hardik", "Devansh"];
+const LEAGUE_START = new Date(Date.UTC(2026, 3, 6));
+
+function getChallengeMasterForWeek(weekOffset: number): string {
+  const now = new Date();
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const day = monday.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  monday.setUTCDate(monday.getUTCDate() + diff);
+  const targetMonday = new Date(monday);
+  targetMonday.setUTCDate(targetMonday.getUTCDate() + (weekOffset * 7));
+  const weekNum = Math.floor((targetMonday.getTime() - LEAGUE_START.getTime()) / (7 * 24 * 60 * 60 * 1000));
+  return CM_ORDER[((weekNum % 3) + 3) % 3];
+}
+
+// ── Card icon components ─────────────────────────────────────────────────────
 function RunIcon({ active }: { active: boolean }) {
   const c = active ? "#C9B87A" : "rgba(212,197,169,0.4)";
   return (
@@ -56,12 +72,18 @@ const TYPE_CARDS: {
   { type: "rest",     label: "Rest Day", Icon: RestIcon      },
 ];
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function todayISO() {
   return new Date().toISOString().split("T")[0];
 }
 
-// ── Shared input styles ──────────────────────────────────────────────────────
+function nDaysAgoISO(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().split("T")[0];
+}
+
+// ── Shared input styles ───────────────────────────────────────────────────────
 const labelStyle: React.CSSProperties = {
   fontFamily: "Montserrat, sans-serif",
   fontSize: "10px",
@@ -112,18 +134,20 @@ const dateInputStyle: React.CSSProperties = {
   colorScheme: "dark" as React.CSSProperties["colorScheme"],
 };
 
-// ── Component ────────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function AddActivityPage() {
   const router = useRouter();
 
   // Auth & real data state
-  const [user,          setUser]          = useState<User | null>(null);
-  const [activityUsed,  setActivityUsed]  = useState(0);
-  const [restUsed,      setRestUsed]      = useState(false);
-  const [currentStreak, setCurrentStreak] = useState(0);
-  const [loadingData,   setLoadingData]   = useState(true);
-  const [submitting,    setSubmitting]    = useState(false);
-  const [submitError,   setSubmitError]   = useState<string | null>(null);
+  const [user,             setUser]             = useState<User | null>(null);
+  const [myName,           setMyName]           = useState("");
+  const [activityUsed,     setActivityUsed]     = useState(0);
+  const [restUsed,         setRestUsed]         = useState(false);
+  const [currentStreak,    setCurrentStreak]    = useState(0);
+  const [loadingData,      setLoadingData]      = useState(true);
+  const [submitting,       setSubmitting]       = useState(false);
+  const [submitError,      setSubmitError]      = useState<string | null>(null);
+  const [dateAlreadyLogged, setDateAlreadyLogged] = useState(false);
 
   // Form state
   const [activityType, setActivityType] = useState<ActivityType>(null);
@@ -146,20 +170,38 @@ export default function AddActivityPage() {
       setUser(authUser);
 
       const weekStart = getWeekStart(new Date());
-      const [{ data: weeklyStats }, { data: streakData }] = await Promise.all([
+      const [{ data: weeklyStats }, { data: streakData }, { data: myProfile }] = await Promise.all([
         supabase.from("weekly_stats").select("*").eq("user_id", authUser.id).eq("week_start", weekStart).single(),
         supabase.from("streaks").select("*").eq("user_id", authUser.id).single(),
+        supabase.from("profiles").select("name").eq("id", authUser.id).single(),
       ]);
 
       setActivityUsed(weeklyStats?.activity_days_used || 0);
       setRestUsed((weeklyStats?.rest_day_used || 0) >= 1);
       setCurrentStreak(streakData?.current_streak || 0);
+      setMyName(myProfile?.name || "");
       setLoadingData(false);
     }
     loadData();
   }, [router]);
 
+  // Check if user already has an activity for the selected date
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createClient();
+    supabase
+      .from("activities")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("date", date)
+      .limit(1)
+      .then(({ data }) => setDateAlreadyLogged((data?.length || 0) > 0));
+  }, [date, user]);
+
   // Derived values
+  const today   = todayISO();
+  const minDate = nDaysAgoISO(2);
+
   const activityRemaining = ACTIVITY_LIMIT - activityUsed;
   const scoring = activityType ? calculatePoints(
     activityType,
@@ -168,15 +210,19 @@ export default function AddActivityPage() {
     currentStreak
   ) : { basePoints: 0, streakBonus: 0, totalPoints: 0, isValid: false };
   const points = scoring.totalPoints;
-  const today  = todayISO();
+
+  const nextWeekCM        = getChallengeMasterForWeek(1);
+  const isThursdayToSunday = [4, 5, 6, 0].includes(new Date().getUTCDay());
 
   const submitDisabled =
     loadingData ||
     submitting ||
+    dateAlreadyLogged ||
     (activityType === "activity" && activityRemaining <= 0) ||
     (activityType === "rest"     && restUsed);
 
   function getDisabledReason(): string | null {
+    if (dateAlreadyLogged) return date === today ? "Activity already logged for today." : `Activity already logged for ${date}.`;
     if (activityType === "activity" && activityRemaining <= 0) return "Maximum 2 activity days reached this week.";
     if (activityType === "rest"     && restUsed)               return "Rest day already used this week.";
     return null;
@@ -195,7 +241,8 @@ export default function AddActivityPage() {
     if (activityType === "activity") {
       if (!duration || parseInt(duration, 10) <= 0) errs.push("Please enter a valid duration.");
     }
-    if (date > today) errs.push("Date cannot be in the future.");
+    if (date > today)   errs.push("Date cannot be in the future.");
+    if (date < minDate) errs.push("Cannot log activities older than 2 days.");
     if (activityType === "activity" && activityRemaining <= 0) errs.push("Maximum 2 activity days reached this week.");
     if (activityType === "rest"     && restUsed)               errs.push("Rest day already used this week.");
     return errs;
@@ -217,7 +264,7 @@ export default function AddActivityPage() {
       durationMins: activityType === "run"      ? parseInt(durationMins, 10) || 0
                   : activityType === "activity" ? parseInt(duration, 10) || 0
                   : undefined,
-      activitySubtype: activityType === "activity" ? subtype                         : undefined,
+      activitySubtype: activityType === "activity" ? subtype : undefined,
     });
 
     setSubmitting(false);
@@ -232,35 +279,7 @@ export default function AddActivityPage() {
     setSubmitted(true);
   }
 
-  async function handleReset() {
-    setActivityType(null);
-    setDistance("");
-    setDurationMins("");
-    setDurationSecs("");
-    setDuration("");
-    setDate(todayISO());
-    setSubtype("Gym");
-    setSubmitted(false);
-    setEarnedPoints(0);
-    setEarnedStreak(0);
-    setErrors([]);
-    setSubmitError(null);
-
-    // Refresh weekly stats after logging
-    if (user) {
-      const supabase = createClient();
-      const weekStart = getWeekStart(new Date());
-      const [{ data: weeklyStats }, { data: streakData }] = await Promise.all([
-        supabase.from("weekly_stats").select("*").eq("user_id", user.id).eq("week_start", weekStart).single(),
-        supabase.from("streaks").select("*").eq("user_id", user.id).single(),
-      ]);
-      setActivityUsed(weeklyStats?.activity_days_used || 0);
-      setRestUsed((weeklyStats?.rest_day_used || 0) >= 1);
-      setCurrentStreak(streakData?.current_streak || 0);
-    }
-  }
-
-  // ── Success state ──────────────────────────────────────────────────────────
+  // ── Success state ───────────────────────────────────────────────────────────
   if (submitted) {
     return (
       <AppLayout>
@@ -296,6 +315,7 @@ export default function AddActivityPage() {
             alignItems: "center",
             justifyContent: "center",
             marginBottom: "28px",
+            margin: "0 auto 28px",
           }}>
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#C9B87A" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12l5 5L20 7" />
@@ -356,7 +376,7 @@ export default function AddActivityPage() {
             {earnedStreak}-day streak maintained
           </p>
 
-          <button onClick={handleReset} style={{
+          <button onClick={() => router.push("/")} style={{
             width: "100%",
             maxWidth: "320px",
             backgroundColor: "#C9B87A",
@@ -369,23 +389,6 @@ export default function AddActivityPage() {
             borderRadius: "14px",
             border: "none",
             cursor: "pointer",
-            marginBottom: "12px",
-          }}>
-            LOG ANOTHER
-          </button>
-          <button onClick={() => router.push("/")} style={{
-            width: "100%",
-            maxWidth: "320px",
-            backgroundColor: "transparent",
-            color: "#C9B87A",
-            fontFamily: "Montserrat, sans-serif",
-            fontWeight: 700,
-            fontSize: "13px",
-            letterSpacing: "0.15em",
-            padding: "16px",
-            borderRadius: "14px",
-            border: "1px solid rgba(201,184,122,0.28)",
-            cursor: "pointer",
           }}>
             VIEW LEADERBOARD
           </button>
@@ -395,7 +398,7 @@ export default function AddActivityPage() {
     );
   }
 
-  // ── Form ───────────────────────────────────────────────────────────────────
+  // ── Form ────────────────────────────────────────────────────────────────────
   const disabledReason = getDisabledReason();
 
   return (
@@ -421,6 +424,55 @@ export default function AddActivityPage() {
             <CountdownPill />
           </div>
         </div>
+
+        {/* CM "you're up next" banner */}
+        {isThursdayToSunday && myName === nextWeekCM && (
+          <div
+            onClick={() => router.push("/challenge")}
+            style={{
+              background: "linear-gradient(135deg, rgba(201,184,122,0.15), rgba(201,184,122,0.05))",
+              border: "1px solid rgba(201,184,122,0.4)",
+              borderRadius: "12px",
+              padding: "16px",
+              marginBottom: "16px",
+              cursor: "pointer",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+              <span style={{ fontSize: "16px" }}>👑</span>
+              <span style={{ fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "12px", letterSpacing: "0.1em", color: "#C9B87A" }}>
+                YOU&apos;RE CHALLENGE MASTER NEXT WEEK
+              </span>
+            </div>
+            <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "13px", color: "#F5F2ED", margin: "0 0 4px" }}>
+              Set your challenge before Sunday 11:59 PM.
+            </p>
+            <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "#C9B87A", margin: 0 }}>
+              Tap to create →
+            </p>
+          </div>
+        )}
+
+        {/* Already logged for selected date */}
+        {dateAlreadyLogged && (
+          <div style={{
+            backgroundColor: "rgba(220,90,90,0.08)",
+            border: "1px solid rgba(220,90,90,0.25)",
+            borderRadius: "12px",
+            padding: "12px 16px",
+            marginBottom: "16px",
+          }}>
+            <p style={{
+              fontFamily: "Montserrat, sans-serif",
+              fontSize: "12px",
+              color: "rgba(220,90,90,0.9)",
+              fontWeight: 600,
+              margin: 0,
+            }}>
+              {date === today ? "Activity already logged for today." : `Activity already logged for ${date}.`}
+            </p>
+          </div>
+        )}
 
         {/* Step 1: Activity type selector */}
         <div style={{ marginBottom: "8px" }}>
@@ -583,7 +635,7 @@ export default function AddActivityPage() {
                       fontFamily: "Montserrat, sans-serif",
                       fontSize: "28px",
                       fontWeight: 700,
-                      color: "rgba(201,184,122,0.35)",
+                      color: "rgba(201,184,201,0.35)",
                       lineHeight: 1,
                       marginBottom: "18px",
                     }}>:</span>
@@ -612,7 +664,7 @@ export default function AddActivityPage() {
                 {/* Date */}
                 <div style={{ marginBottom: "20px" }}>
                   <label style={labelStyle}>Date</label>
-                  <input type="date" value={date} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
+                  <input type="date" value={date} min={minDate} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
                 </div>
 
                 {/* Points preview */}
@@ -702,7 +754,7 @@ export default function AddActivityPage() {
                 {/* Date */}
                 <div style={{ marginBottom: "20px" }}>
                   <label style={labelStyle}>Date</label>
-                  <input type="date" value={date} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
+                  <input type="date" value={date} min={minDate} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
                 </div>
 
                 {/* Note */}
@@ -740,7 +792,7 @@ export default function AddActivityPage() {
               <>
                 <div style={{ marginBottom: "20px" }}>
                   <label style={labelStyle}>Date</label>
-                  <input type="date" value={date} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
+                  <input type="date" value={date} min={minDate} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
                 </div>
                 <div style={{
                   backgroundColor: "rgba(212,197,169,0.04)",

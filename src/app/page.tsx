@@ -40,23 +40,27 @@ const activityStyles: Record<ActivityType, { bg: string; color: string; border: 
 };
 
 const CM_ORDER = ["Yash", "Hardik", "Devansh"];
-// April 1 2026 UTC — epoch for all week calculations
-const EPOCH_MS = Date.UTC(2026, 3, 1);
-const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+const LEAGUE_START = new Date(Date.UTC(2026, 3, 6)); // Monday April 6, 2026
 
-function weeksFromEpoch(): number {
+function getChallengeMasterForWeek(weekOffset: number): string {
   const now = new Date();
-  const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  return Math.floor((todayUTC - EPOCH_MS) / MS_PER_WEEK);
-}
-
-function getChallengeMasterName(): string {
-  const wk = weeksFromEpoch();
-  return CM_ORDER[((wk % 3) + 3) % 3];
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const day = monday.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  monday.setUTCDate(monday.getUTCDate() + diff);
+  const targetMonday = new Date(monday);
+  targetMonday.setUTCDate(targetMonday.getUTCDate() + (weekOffset * 7));
+  const weekNum = Math.floor((targetMonday.getTime() - LEAGUE_START.getTime()) / (7 * 24 * 60 * 60 * 1000));
+  return CM_ORDER[((weekNum % 3) + 3) % 3];
 }
 
 function getCurrentWeekNumber(): number {
-  return Math.max(1, weeksFromEpoch() + 1);
+  const now = new Date();
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const day = monday.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  monday.setUTCDate(monday.getUTCDate() + diff);
+  return Math.max(1, Math.floor((monday.getTime() - LEAGUE_START.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1);
 }
 
 function todayActivityFor(activities: RawActivity[], userId: string, today: string): {
@@ -298,7 +302,7 @@ export default function HomePage() {
       if (!user) { router.replace("/login"); return; }
 
       const today = new Date().toISOString().split("T")[0];
-      const cmName = getChallengeMasterName();
+      const thisWeekCM = getChallengeMasterForWeek(0);
       setWeekNum(getCurrentWeekNumber());
 
       const [
@@ -344,11 +348,12 @@ export default function HomePage() {
           todayLabel:     today_.label,
           todayType:      today_.type,
           todayPoints:    today_.points,
-          challengeMaster: name.toLowerCase() === cmName.toLowerCase(),
+          challengeMaster: name.trim().toLowerCase() === thisWeekCM.trim().toLowerCase(),
           isCurrentUser:  p.id === user.id,
         };
       });
 
+      console.log('[CM Debug] thisWeekCM:', thisWeekCM, '| players:', built.map(p => p.name));
       built.sort((a, b) => b.points - a.points);
       built.forEach((p, i) => { p.rank = i + 1; });
 

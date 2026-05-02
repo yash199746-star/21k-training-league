@@ -84,16 +84,23 @@ export async function logActivity({
 
   if (weeklyError) return { success: false, error: weeklyError.message }
 
-  // Update streak
-  const today = new Date().toISOString().split('T')[0]
-  const lastActivityDate = streakData?.last_activity_date
-  const yesterday = new Date()
-  yesterday.setDate(yesterday.getDate() - 1)
-  const yesterdayStr = yesterday.toISOString().split('T')[0]
+  // Update streak — 48h buffer: streak continues if last activity was today, yesterday, or 2 days ago
+  const todayDate = new Date()
+  todayDate.setHours(0, 0, 0, 0)
+  const todayStr = todayDate.toISOString().split('T')[0]
+  const yesterdayDate = new Date(todayDate)
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+  const yesterdayStr = yesterdayDate.toISOString().split('T')[0]
+  const twoDaysAgoDate = new Date(todayDate)
+  twoDaysAgoDate.setDate(twoDaysAgoDate.getDate() - 2)
+  const twoDaysAgoStr = twoDaysAgoDate.toISOString().split('T')[0]
 
+  const lastActivityDate = streakData?.last_activity_date
   let newStreak = 1
-  if (lastActivityDate === yesterdayStr || lastActivityDate === today) {
-    newStreak = (streakData?.current_streak || 0) + (lastActivityDate === today ? 0 : 1)
+  if (lastActivityDate === todayStr) {
+    newStreak = currentStreak
+  } else if (lastActivityDate === yesterdayStr || lastActivityDate === twoDaysAgoStr) {
+    newStreak = currentStreak + 1
   }
 
   const newLongest = Math.max(newStreak, streakData?.longest_streak || 0)

@@ -282,10 +282,10 @@ export default function ChallengePage() {
   const [formErrors,     setFormErrors]     = useState<string[]>([]);
   const formRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to the form whenever it opens
+  // Scroll to top whenever the form opens so it's always visible
   useEffect(() => {
-    if (showForm && formRef.current) {
-      formRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (showForm) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [showForm]);
 
