@@ -282,6 +282,14 @@ export default function ChallengePage() {
   const [formErrors,     setFormErrors]     = useState<string[]>([]);
   const formRef = useRef<HTMLDivElement>(null);
 
+  // Open form automatically if URL has ?openForm=true
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("openForm") === "true") {
+      setShowForm(true);
+    }
+  }, []);
+
   // Scroll to top whenever the form opens so it's always visible
   useEffect(() => {
     if (showForm) {
@@ -469,7 +477,8 @@ export default function ChallengePage() {
   const nextWeekNum = currentWeekNum + 1;
   const nextWeekCM = getChallengeMasterForWeek(1);
   const isThursdayToSunday = [4, 5, 6, 0].includes(new Date().getUTCDay());
-  console.log("[CM Banner] nextWeekCM:", nextWeekCM, "| myName:", myName, "| isThursdayToSunday:", isThursdayToSunday, "| bannerShows:", isThursdayToSunday && myName === nextWeekCM);
+  const bannerCondition = isThursdayToSunday && myName.trim().toLowerCase() === nextWeekCM.trim().toLowerCase();
+  console.log("[CM Banner Debug] nextWeekCM:", nextWeekCM, "| myName:", myName, "| isThurSun:", isThursdayToSunday, "| show:", bannerCondition);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -490,9 +499,9 @@ export default function ChallengePage() {
           </div>
 
           {/* ── "You're up next" banner ── */}
-          {isThursdayToSunday && myName === nextWeekCM && (
+          {bannerCondition && (
             <div
-              onClick={() => setShowForm(true)}
+              onClick={() => { setShowForm(true); window.scrollTo({ top: 0 }); }}
               style={{
                 backgroundColor: "rgba(201,184,122,0.08)",
                 backdropFilter: "blur(10px)",

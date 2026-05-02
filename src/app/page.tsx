@@ -353,7 +353,7 @@ export default function HomePage() {
         };
       });
 
-      console.log('[CM Debug] thisWeekCM:', thisWeekCM, '| players:', built.map(p => p.name));
+      console.log('[CM Debug] thisWeekCM:', thisWeekCM, 'players:', built.map(p => p.name));
       built.sort((a, b) => b.points - a.points);
       built.forEach((p, i) => { p.rank = i + 1; });
 

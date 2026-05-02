@@ -213,6 +213,8 @@ export default function AddActivityPage() {
 
   const nextWeekCM        = getChallengeMasterForWeek(1);
   const isThursdayToSunday = [4, 5, 6, 0].includes(new Date().getUTCDay());
+  const cmBannerCondition = isThursdayToSunday && myName.trim().toLowerCase() === nextWeekCM.trim().toLowerCase();
+  console.log("[CM Banner Debug] nextWeekCM:", nextWeekCM, "| myName:", myName, "| isThurSun:", isThursdayToSunday, "| show:", cmBannerCondition);
 
   const submitDisabled =
     loadingData ||
@@ -426,9 +428,9 @@ export default function AddActivityPage() {
         </div>
 
         {/* CM "you're up next" banner */}
-        {isThursdayToSunday && myName === nextWeekCM && (
+        {cmBannerCondition && (
           <div
-            onClick={() => router.push("/challenge")}
+            onClick={() => router.push("/challenge?openForm=true")}
             style={{
               background: "linear-gradient(135deg, rgba(201,184,122,0.15), rgba(201,184,122,0.05))",
               border: "1px solid rgba(201,184,122,0.4)",
