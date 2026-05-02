@@ -214,10 +214,10 @@ export default function AddActivityPage() {
   ) : { basePoints: 0, streakBonus: 0, totalPoints: 0, isValid: false };
   const points = scoring.totalPoints;
 
-  const nextWeekCM        = getChallengeMasterForWeek(1);
-  // TEMP: day-of-week check removed for testing — show banner whenever name matches next week's CM
-  const cmBannerCondition = myName.trim().toLowerCase() === nextWeekCM.trim().toLowerCase();
-  console.log("[CM Banner Debug] nextWeekCM:", nextWeekCM, "| myName:", myName, "| show:", cmBannerCondition);
+  const nextWeekCM         = getChallengeMasterForWeek(1);
+  const isThursdayToSunday = [0, 4, 5, 6].includes(new Date().getUTCDay());
+  const cmBannerCondition  = isThursdayToSunday && myName.trim().toLowerCase() === nextWeekCM.trim().toLowerCase();
+  console.log("[CM Banner Debug] nextWeekCM:", nextWeekCM, "| myName:", myName, "| isThurSun:", isThursdayToSunday, "| show:", cmBannerCondition);
 
   const submitDisabled =
     loadingData ||

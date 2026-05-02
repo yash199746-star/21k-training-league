@@ -347,7 +347,7 @@ export default function ChallengePage() {
         const [{ data: creatorProfile }, { data: progressRows }] = await Promise.all([
           supabase.from("profiles").select("name").eq("id", active.created_by).single(),
           supabase.from("challenge_progress")
-            .select("user_id, current_value, completed, points_awarded")
+            .select("user_id, current_value, is_completed")
             .eq("challenge_id", active.id),
         ]);
 
@@ -361,8 +361,7 @@ export default function ChallengePage() {
           challenge_id: active.id,
           user_id: user.id,
           current_value: myProgress,
-          completed: myCompleted,
-          points_awarded: myCompleted ? bonusPts : 0,
+          is_completed: myCompleted,
           updated_at: new Date().toISOString(),
         }, { onConflict: "challenge_id,user_id" });
 
@@ -477,9 +476,9 @@ export default function ChallengePage() {
 
   const nextWeekNum = currentWeekNum + 1;
   const nextWeekCM = getChallengeMasterForWeek(1);
-  // TEMP: day-of-week check removed for testing — show banner whenever name matches next week's CM
-  const bannerCondition = myName.trim().toLowerCase() === nextWeekCM.trim().toLowerCase();
-  console.log("[CM Banner Debug] nextWeekCM:", nextWeekCM, "| myName:", myName, "| show:", bannerCondition);
+  const isThursdayToSunday = [0, 4, 5, 6].includes(new Date().getUTCDay());
+  const bannerCondition = isThursdayToSunday && myName.trim().toLowerCase() === nextWeekCM.trim().toLowerCase();
+  console.log("[CM Banner Debug] nextWeekCM:", nextWeekCM, "| myName:", myName, "| isThurSun:", isThursdayToSunday, "| show:", bannerCondition);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
