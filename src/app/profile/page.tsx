@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import AppLayout from "@/components/AppLayout";
 import CountdownPill from "@/components/CountdownPill";
 import { createClient } from "@/lib/supabase-browser";
@@ -354,7 +355,7 @@ export default function ProfilePage() {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "32px" }}>
           <div style={{ marginBottom: "14px", borderRadius: "50%" }}>
             {p.avatar_url ? (
-              <img src={p.avatar_url} alt={p.name} style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover", display: "block" }} />
+              <Image src={p.avatar_url} alt={p.name || "Profile"} width={80} height={80} style={{ borderRadius: "50%", objectFit: "cover", display: "block" }} />
             ) : (
               <div style={{ width: "80px", height: "80px", borderRadius: "50%", backgroundColor: "#C9B87A", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Playfair Display', Georgia, serif", fontSize: "32px", fontWeight: 700, color: "#0D1829" }}>
                 {p.name?.[0] || "?"}

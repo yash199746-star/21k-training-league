@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import AppLayout from "@/components/AppLayout";
 import CountdownPill from "@/components/CountdownPill";
 import { createClient } from "@/lib/supabase-browser";
@@ -167,7 +168,7 @@ function PlayerCard({ player }: { player: Player }) {
           overflow: "hidden",
         }}>
           {player.avatarUrl ? (
-            <img src={player.avatarUrl} alt={player.name} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+            <Image src={player.avatarUrl} alt={player.name} width={isFirst ? 50 : 42} height={isFirst ? 50 : 42} style={{ borderRadius: "50%", objectFit: "cover" }} />
           ) : (
             player.initials
           )}

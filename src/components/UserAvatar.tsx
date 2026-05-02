@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase-browser";
 
 export default function UserAvatar() {
@@ -39,10 +40,12 @@ export default function UserAvatar() {
       flexShrink: 0,
     }}>
       {avatarUrl ? (
-        <img
+        <Image
           src={avatarUrl}
           alt="avatar"
-          style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }}
+          width={32}
+          height={32}
+          style={{ borderRadius: "50%", objectFit: "cover" }}
         />
       ) : (
         <span style={{

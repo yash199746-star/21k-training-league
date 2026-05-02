@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import AppLayout from "@/components/AppLayout";
 import CountdownPill from "@/components/CountdownPill";
 import { createClient } from "@/lib/supabase-browser";
@@ -218,7 +219,7 @@ function ProgressRow({ name, initials, avatarUrl, progress, target, completed, p
           overflow: "hidden",
         }}>
           {avatarUrl ? (
-            <img src={avatarUrl} alt={name} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+            <Image src={avatarUrl} alt={name} width={38} height={38} style={{ borderRadius: "50%", objectFit: "cover" }} />
           ) : (
             initials
           )}

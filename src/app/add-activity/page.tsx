@@ -77,12 +77,6 @@ function todayISO() {
   return new Date().toISOString().split("T")[0];
 }
 
-function nDaysAgoISO(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().split("T")[0];
-}
-
 // ── Shared input styles ───────────────────────────────────────────────────────
 const labelStyle: React.CSSProperties = {
   fontFamily: "Montserrat, sans-serif",
