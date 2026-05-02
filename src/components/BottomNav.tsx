@@ -128,9 +128,6 @@ export default function BottomNav() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: addActive
-                ? "0 4px 20px rgba(201,184,122,0.55), 0 0 0 4px rgba(201,184,122,0.15)"
-                : "0 4px 16px rgba(201,184,122,0.35), 0 0 0 3px rgba(201,184,122,0.1)",
               flexShrink: 0,
             }}>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0D1829" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">

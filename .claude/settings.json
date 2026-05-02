@@ -3,7 +3,8 @@
     "allow": [
       "Bash(git checkout *)",
       "Bash(git commit *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(taskkill /F /IM node.exe)"
     ]
   }
 }

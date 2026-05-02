@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase-browser";
+import CountdownPill from "@/components/CountdownPill";
 
 function PhotoBackground() {
   return (
@@ -25,37 +25,21 @@ function PhotoBackground() {
         left: 0,
         width: "100%",
         height: "100%",
-        background: "linear-gradient(to bottom, rgba(13,24,41,0.6) 0%, rgba(13,24,41,0.75) 50%, rgba(13,24,41,0.92) 100%)",
+        background: "linear-gradient(to bottom, rgba(13,24,41,0.5) 0%, rgba(13,24,41,0.65) 50%, rgba(13,24,41,0.85) 100%)",
       }} />
     </div>
   );
 }
 
 function LoginForm() {
-  const [email, setEmail]     = useState("");
-  const [loading, setLoading] = useState(false);
-  const [sent, setSent]       = useState(false);
-  const [error, setError]     = useState<string | null>(null);
-  const searchParams          = useSearchParams();
-  const callbackError         = searchParams.get("error");
-
-  async function handleSend() {
-    if (!email || loading) return;
-    setLoading(true);
-    setError(null);
+  async function handleGoogleLogin() {
     const supabase = createClient();
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email,
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
-    setLoading(false);
-    if (otpError) {
-      setError("Failed to send magic link. Please try again.");
-    } else {
-      setSent(true);
-    }
   }
 
   return (
@@ -65,8 +49,8 @@ function LoginForm() {
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      justifyContent: "center",
-      padding: "24px",
+      justifyContent: "flex-start",
+      padding: "10vh 24px 40px",
       position: "relative",
     }}>
       <PhotoBackground />
@@ -76,13 +60,13 @@ function LoginForm() {
       {/* Logo */}
       <div style={{ textAlign: "center" }}>
         <p style={{
-          fontFamily: "Montserrat, sans-serif",
-          fontWeight: 800,
+          fontFamily: "var(--font-cinzel), 'Cinzel', serif",
+          fontWeight: 700,
           color: "#C9B87A",
-          fontSize: "52px",
-          letterSpacing: "0.2em",
+          fontSize: "56px",
+          letterSpacing: "0.08em",
           lineHeight: 1,
-          marginBottom: "10px",
+          margin: "0 0 8px 0",
         }}>
           21K
         </p>
@@ -102,171 +86,82 @@ function LoginForm() {
           color: "#D4C5A9",
           fontSize: "10px",
           letterSpacing: "0.2em",
-          marginBottom: "32px",
+          marginBottom: "16px",
         }}>
-          LEH HALF MARATHON · 13 SEPT 2026
+          LADAKH HALF MARATHON · 13 SEPT 2026
         </p>
+        <div style={{ marginBottom: "32px" }}>
+          <CountdownPill />
+        </div>
       </div>
 
-      {/* Callback error banner */}
-      {callbackError && (
-        <div style={{
-          width: "100%",
-          maxWidth: "380px",
-          backgroundColor: "rgba(210,70,70,0.15)",
-          border: "1px solid rgba(210,70,70,0.35)",
-          borderRadius: "10px",
-          padding: "10px 14px",
-          marginBottom: "12px",
+      {/* Card */}
+      <div style={{
+        width: "100%",
+        maxWidth: "380px",
+        backgroundColor: "rgba(13,24,41,0.75)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        borderRadius: "16px",
+        padding: "24px",
+        border: "1px solid rgba(212,197,169,0.12)",
+      }}>
+        <h2 style={{
+          color: "#F5F2ED",
+          fontFamily: "'Playfair Display', Georgia, serif",
+          fontStyle: "normal",
+          fontWeight: 700,
+          fontSize: "22px",
+          marginBottom: "4px",
+        }}>
+          Welcome Back
+        </h2>
+        <p style={{
+          color: "#D4C5A9",
           fontFamily: "Montserrat, sans-serif",
-          fontSize: "12px",
-          color: "#E07070",
-          textAlign: "center",
+          fontSize: "13px",
+          marginBottom: "20px",
         }}>
-          Link expired or invalid. Please request a new one.
-        </div>
-      )}
+          Sign in to continue your training
+        </p>
 
-      {/* Form */}
-      {!sent ? (
-        <div style={{
-          width: "100%",
-          maxWidth: "380px",
-          backgroundColor: "rgba(13,24,41,0.85)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          borderRadius: "16px",
-          padding: "24px",
-          border: "1px solid rgba(212,197,169,0.12)",
-        }}>
-          <h2 style={{
-            color: "#F5F2ED",
-            fontFamily: "'Playfair Display', Georgia, serif",
-            fontSize: "22px",
-            marginBottom: "8px",
-          }}>
-            Welcome Back
-          </h2>
-          <p style={{
-            color: "#D4C5A9",
+        <button
+          onClick={handleGoogleLogin}
+          style={{
+            background: "white",
+            color: "#1a1a1a",
+            border: "none",
+            borderRadius: "8px",
+            padding: "12px 20px",
             fontFamily: "Montserrat, sans-serif",
-            fontSize: "14px",
-            marginBottom: "20px",
-          }}>
-            Enter your email to receive a magic link
-          </p>
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleSend()}
-            placeholder="your@email.com"
-            disabled={loading}
-            style={{
-              width: "100%",
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(212,197,169,0.25)",
-              borderRadius: "12px",
-              padding: "14px 16px",
-              color: "#F5F2ED",
-              fontFamily: "Montserrat, sans-serif",
-              fontSize: "14px",
-              boxSizing: "border-box",
-              marginBottom: "12px",
-              outline: "none",
-              opacity: loading ? 0.5 : 1,
-            }}
-          />
-          {error && (
-            <p style={{
-              color: "#E07070",
-              fontFamily: "Montserrat, sans-serif",
-              fontSize: "12px",
-              marginBottom: "10px",
-              textAlign: "center",
-            }}>
-              {error}
-            </p>
-          )}
-          <button
-            onClick={handleSend}
-            disabled={!email || loading}
-            style={{
-              width: "100%",
-              backgroundColor: "#C9B87A",
-              color: "#0D1829",
-              fontFamily: "Montserrat, sans-serif",
-              fontWeight: 700,
-              fontSize: "13px",
-              letterSpacing: "0.15em",
-              padding: "14px",
-              borderRadius: "12px",
-              border: "none",
-              cursor: email && !loading ? "pointer" : "not-allowed",
-              opacity: email && !loading ? 1 : 0.4,
-            }}
-          >
-            {loading ? "SENDING…" : "SEND MAGIC LINK"}
-          </button>
-          <p style={{
-            color: "rgba(212,197,169,0.4)",
-            fontFamily: "Montserrat, sans-serif",
-            fontSize: "11px",
-            textAlign: "center",
-            marginTop: "16px",
-          }}>
-            Access restricted to league members only
-          </p>
-        </div>
-      ) : (
-        <div style={{
-          width: "100%",
-          maxWidth: "380px",
-          backgroundColor: "rgba(13,24,41,0.85)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          borderRadius: "16px",
-          padding: "32px 24px",
-          border: "1px solid rgba(212,197,169,0.12)",
-          textAlign: "center",
-        }}>
-          <p style={{
-            color: "#F5F2ED",
-            fontFamily: "'Playfair Display', Georgia, serif",
-            fontSize: "22px",
-            marginBottom: "8px",
-          }}>
-            Check your email
-          </p>
-          <p style={{ color: "#D4C5A9", fontFamily: "Montserrat, sans-serif", fontSize: "14px" }}>
-            Magic link sent to
-          </p>
-          <p style={{
-            color: "#C9B87A",
-            fontFamily: "Montserrat, sans-serif",
-            fontSize: "14px",
             fontWeight: 600,
-            marginTop: "4px",
-          }}>
-            {email}
-          </p>
-          <button
-            onClick={() => { setSent(false); setEmail(""); }}
-            style={{
-              marginTop: "20px",
-              background: "none",
-              border: "none",
-              color: "rgba(212,197,169,0.5)",
-              fontFamily: "Montserrat, sans-serif",
-              fontSize: "12px",
-              cursor: "pointer",
-              letterSpacing: "0.05em",
-            }}
-          >
-            Wrong email? Go back
-          </button>
-        </div>
-      )}
+            fontSize: "14px",
+            letterSpacing: "0.02em",
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+            cursor: "pointer",
+            marginBottom: "0",
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18">
+            <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1.94-1.86 2.95-4.3 2.95-2.61 0-4.73-2.12-4.73-4.73s2.12-4.73 4.73-4.73c1.19 0 2.27.41 3.11 1.09l2.21-2.21C12.9 2.38 11.05 1.5 8.98 1.5 4.89 1.5 1.5 4.89 1.5 8.98s3.39 7.48 7.48 7.48c4.32 0 7.18-3.04 7.18-7.18 0-.49-.05-.96-.15-1.28z"/>
+          </svg>
+          Continue with Google
+        </button>
+
+        <p style={{
+          color: "rgba(212,197,169,0.4)",
+          fontFamily: "Montserrat, sans-serif",
+          fontSize: "11px",
+          textAlign: "center",
+          marginTop: "16px",
+        }}>
+          Access restricted to league members only
+        </p>
+      </div>
 
       </div>{/* end content wrapper */}
     </div>

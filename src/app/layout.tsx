@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Montserrat } from "next/font/google";
+import { Playfair_Display, Montserrat, Cinzel } from "next/font/google";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -11,6 +11,13 @@ const montserrat = Montserrat({
 const playfairDisplay = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair",
+  display: "swap",
+});
+
+const cinzel = Cinzel({
+  subsets: ["latin"],
+  variable: "--font-cinzel",
+  weight: "700",
   display: "swap",
 });
 
@@ -26,7 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${montserrat.variable} ${playfairDisplay.variable} antialiased`}>
+      <body className={`${montserrat.variable} ${playfairDisplay.variable} ${cinzel.variable} antialiased`}>
         {children}
       </body>
     </html>

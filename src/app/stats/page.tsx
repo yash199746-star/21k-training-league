@@ -54,7 +54,9 @@ const sectionTitle: React.CSSProperties = {
 };
 
 const chartCard: React.CSSProperties = {
-  backgroundColor: "#0D1829",
+  backgroundColor: "rgba(13,24,41,0.55)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
   border: "1px solid rgba(212,197,169,0.08)",
   borderRadius: "16px",
   padding: "16px 12px 12px",
@@ -72,7 +74,7 @@ const chartLabel: React.CSSProperties = {
 };
 
 const tooltipStyle = {
-  backgroundColor: "#0D1829",
+  backgroundColor: "rgba(13,24,41,0.55)",
   border: "1px solid rgba(201,184,122,0.2)",
   borderRadius: "8px",
   fontFamily: "Montserrat, sans-serif",
@@ -284,7 +286,7 @@ export default function StatsPage() {
           </div>
           <div className="sp" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "28px" }}>
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} style={{ backgroundColor: "#0D1829", borderRadius: "14px", padding: "16px 14px" }}>
+              <div key={i} style={{ backgroundColor: "rgba(13,24,41,0.55)", borderRadius: "14px", padding: "16px 14px" }}>
                 <SkeletonBlock h={9}  w="60%"  />
                 <div style={{ marginTop: "12px" }}><SkeletonBlock h={28} w="70%" /></div>
               </div>
@@ -292,7 +294,7 @@ export default function StatsPage() {
           </div>
           <div className="sp" style={{ display: "flex", gap: "8px", marginBottom: "28px" }}>
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} style={{ flexShrink: 0, backgroundColor: "#0D1829", borderRadius: "999px", padding: "8px 16px", width: "80px", height: "52px" }} />
+              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(13,24,41,0.55)", borderRadius: "999px", padding: "8px 16px", width: "80px", height: "52px" }} />
             ))}
           </div>
           {Array.from({ length: 4 }).map((_, i) => (
@@ -314,7 +316,7 @@ export default function StatsPage() {
         <div style={{ position: "relative", zIndex: 1 }}>
 
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: "28px" }}>
+        <div style={{ textAlign: "center", marginBottom: "28px", position: "relative" }}>
           <h1 style={{
             fontFamily: "'Playfair Display', Georgia, serif",
             fontSize: "30px",
@@ -346,7 +348,9 @@ export default function StatsPage() {
             { label: "Avg Run Distance", value: stats.avgRunKm > 0 ? String(stats.avgRunKm) : "—", unit: stats.avgRunKm > 0 ? " km" : "" },
           ].map(({ label, value, unit, fire }) => (
             <div key={label} style={{
-              backgroundColor: "#0D1829",
+              backgroundColor: "rgba(13,24,41,0.55)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
               border: "1px solid rgba(212,197,169,0.08)",
               borderRadius: "14px",
               padding: "16px 14px",
@@ -382,7 +386,7 @@ export default function StatsPage() {
                     {unit}
                   </span>
                 )}
-                {fire && <span style={{ fontSize: "14px", marginLeft: "2px" }}>🔥</span>}
+                {fire && <span style={{ fontSize: "14px", marginLeft: "2px" }}>⚡</span>}
               </div>
             </div>
           ))}
@@ -407,7 +411,9 @@ export default function StatsPage() {
           ].map(({ label, value, muted }) => (
             <div key={label} style={{
               flexShrink: 0,
-              backgroundColor: "#0D1829",
+              backgroundColor: "rgba(13,24,41,0.55)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
               border: "1px solid rgba(212,197,169,0.1)",
               borderRadius: "999px",
               padding: "8px 16px",
@@ -532,7 +538,9 @@ export default function StatsPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {records.map(({ label, value }) => (
             <div key={label} style={{
-              backgroundColor: "#0D1829",
+              backgroundColor: "rgba(13,24,41,0.55)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
               border: "1px solid rgba(201,184,122,0.15)",
               borderRadius: "14px",
               padding: "16px 18px",

@@ -34,21 +34,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login?error=true', request.url))
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('id', session.user.id)
-    .single()
+  const user = session.user
+  const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || null
+  const name = user.user_metadata?.full_name || user.user_metadata?.name ||
+    user.email?.split('@')[0] || 'User'
 
-  if (!profile) {
-    const emailPart = session.user.email?.split('@')[0] ?? 'runner'
-    const name = emailPart.charAt(0).toUpperCase() + emailPart.slice(1)
-    await supabase.from('profiles').insert({
-      id: session.user.id,
-      email: session.user.email,
-      name,
-    })
-  }
+  await supabase.from('profiles').upsert({
+    id: user.id,
+    email: user.email,
+    name,
+    avatar_url: avatarUrl,
+  }, { onConflict: 'id' })
 
   return NextResponse.redirect(new URL('/splash', request.url))
 }

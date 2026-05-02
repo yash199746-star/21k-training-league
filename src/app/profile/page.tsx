@@ -50,6 +50,7 @@ interface ProfileData {
   name: string;
   initials: string;
   email: string;
+  avatar_url: string | null;
   isChallengeMaster: boolean;
   challengeMasterWeek: number;
 }
@@ -238,7 +239,7 @@ export default function ProfilePage() {
       const cmName   = getChallengeMasterName();
       const isCM     = name.toLowerCase() === cmName.toLowerCase();
 
-      setProfile({ name, initials, email, isChallengeMaster: isCM, challengeMasterWeek: getCurrentWeekNumber() });
+      setProfile({ name, initials, email, avatar_url: profileRow?.avatar_url || null, isChallengeMaster: isCM, challengeMasterWeek: getCurrentWeekNumber() });
 
       // ── Season summary ───────────────────────────────────────────────────
       setSeason({
@@ -304,17 +305,17 @@ export default function ProfilePage() {
           {/* Season grid skeleton */}
           <div className="sp" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "8px", marginBottom: "28px" }}>
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} style={{ backgroundColor: "#0D1829", borderRadius: "14px", padding: "14px 8px", height: "66px" }} />
+              <div key={i} style={{ backgroundColor: "rgba(13,24,41,0.55)", borderRadius: "14px", padding: "14px 8px", height: "66px" }} />
             ))}
           </div>
           {/* Badge grid skeleton */}
           <div className="sp" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: "10px", marginBottom: "28px" }}>
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} style={{ backgroundColor: "#0D1829", borderRadius: "14px", padding: "14px", height: "68px" }} />
+              <div key={i} style={{ backgroundColor: "rgba(13,24,41,0.55)", borderRadius: "14px", padding: "14px", height: "68px" }} />
             ))}
           </div>
           {/* Feed skeleton */}
-          <div className="sp" style={{ backgroundColor: "#0D1829", borderRadius: "16px", padding: "16px", marginBottom: "28px" }}>
+          <div className="sp" style={{ backgroundColor: "rgba(13,24,41,0.55)", borderRadius: "16px", padding: "16px", marginBottom: "28px" }}>
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} style={{ height: "44px", borderBottom: i < 4 ? "1px solid rgba(212,197,169,0.06)" : "none", display: "flex", alignItems: "center", gap: "12px" }}>
                 <div style={{ width: "30px", height: "30px", borderRadius: "50%", backgroundColor: "rgba(212,197,169,0.07)" }} />
@@ -351,13 +352,14 @@ export default function ProfilePage() {
 
         {/* ── Section 1: Profile Hero ── */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "32px" }}>
-          <div style={{
-            width: "80px", height: "80px", borderRadius: "50%",
-            backgroundColor: "#C9B87A", display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "'Playfair Display', Georgia, serif", fontSize: "32px", fontWeight: 700, color: "#0D1829",
-            marginBottom: "14px", boxShadow: "0 4px 20px rgba(201,184,122,0.3)",
-          }}>
-            {p.initials}
+          <div style={{ marginBottom: "14px", borderRadius: "50%" }}>
+            {p.avatar_url ? (
+              <img src={p.avatar_url} alt={p.name} style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover", display: "block" }} />
+            ) : (
+              <div style={{ width: "80px", height: "80px", borderRadius: "50%", backgroundColor: "#C9B87A", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Playfair Display', Georgia, serif", fontSize: "32px", fontWeight: 700, color: "#0D1829" }}>
+                {p.name?.[0] || "?"}
+              </div>
+            )}
           </div>
 
           <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "26px", fontWeight: 700, color: "#F5F2ED", margin: "0 0 4px" }}>
@@ -404,7 +406,8 @@ export default function ProfilePage() {
             { label: "Streak", value: season.bestStreak,  unit: "d" },
           ].map(({ label, value, unit }) => (
             <div key={label} style={{
-              backgroundColor: "#0D1829", border: "1px solid rgba(212,197,169,0.08)",
+              backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+              border: "1px solid rgba(212,197,169,0.08)",
               borderRadius: "14px", padding: "14px 8px", textAlign: "center",
             }}>
               <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "22px", fontWeight: 700, color: "#C9B87A", lineHeight: 1 }}>
@@ -424,7 +427,9 @@ export default function ProfilePage() {
             const isEarned = earned.has(id);
             return (
               <div key={id} style={{
-                backgroundColor: "#0D1829",
+                backgroundColor: "rgba(13,24,41,0.55)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
                 border: `1px solid ${isEarned ? "rgba(201,184,122,0.25)" : "rgba(212,197,169,0.06)"}`,
                 borderRadius: "14px", padding: "14px",
                 display: "flex", alignItems: "center", gap: "12px",
@@ -462,7 +467,8 @@ export default function ProfilePage() {
         {/* ── Section 4: Recent Activity Feed ── */}
         <p style={sectionTitle}>Recent Activity</p>
         <div style={{
-          backgroundColor: "#0D1829", border: "1px solid rgba(212,197,169,0.08)",
+          backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+          border: "1px solid rgba(212,197,169,0.08)",
           borderRadius: "16px", overflow: "hidden", marginBottom: "28px",
         }}>
           {feed.length === 0 ? (
@@ -507,7 +513,7 @@ export default function ProfilePage() {
 
         {/* ── Section 5: Settings ── */}
         <p style={sectionTitle}>Settings</p>
-        <div style={{ backgroundColor: "#0D1829", border: "1px solid rgba(212,197,169,0.08)", borderRadius: "16px", overflow: "hidden" }}>
+        <div style={{ backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", border: "1px solid rgba(212,197,169,0.08)", borderRadius: "16px", overflow: "hidden" }}>
           <button
             onClick={() => {}}
             style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", background: "none", border: "none", borderBottom: "1px solid rgba(212,197,169,0.06)", cursor: "pointer" }}
@@ -518,6 +524,7 @@ export default function ProfilePage() {
             <ChevronRight />
           </button>
 
+          {p.email === "yash199746@gmail.com" && (
           <button
             onClick={() => router.push("/admin")}
             style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", background: "none", border: "none", borderBottom: "1px solid rgba(212,197,169,0.06)", cursor: "pointer" }}
@@ -532,6 +539,7 @@ export default function ProfilePage() {
             </div>
             <ChevronRight />
           </button>
+          )}
 
           <button
             onClick={handleSignOut}

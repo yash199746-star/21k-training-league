@@ -7,25 +7,32 @@ import CountdownPill from "@/components/CountdownPill";
 import { createClient } from "@/lib/supabase-browser";
 import { getWeekStart } from "@/lib/scoring";
 
-// ── CM rotation (same as leaderboard / profile) ────────────────────────────
+// ── CM rotation ────────────────────────────────────────────────────────────
 const CM_ORDER = ["Yash", "Hardik", "Devansh"];
-const APRIL_1_2026_MS = new Date("2026-04-01").getTime();
+const LEAGUE_START = new Date(Date.UTC(2026, 3, 6)); // Monday April 6, 2026
 
-// Use the Monday of the current week so CM doesn't shift mid-week.
-// new Date("YYYY-MM-DD") is midnight UTC, same as APRIL_1_2026_MS → subtraction is clean.
-function getChallengeMasterName(): string {
-  const weekStart = new Date(getWeekStart(new Date())).getTime();
-  const wk = Math.floor((weekStart - APRIL_1_2026_MS) / (7 * 24 * 60 * 60 * 1000));
-  return CM_ORDER[((wk % 3) + 3) % 3];
+function getChallengeMasterForWeek(weekOffset: number): string {
+  const now = new Date();
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const day = monday.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  monday.setUTCDate(monday.getUTCDate() + diff);
+  const targetMonday = new Date(monday);
+  targetMonday.setUTCDate(targetMonday.getUTCDate() + (weekOffset * 7));
+  const weekNum = Math.floor((targetMonday.getTime() - LEAGUE_START.getTime()) / (7 * 24 * 60 * 60 * 1000));
+  return CM_ORDER[((weekNum % 3) + 3) % 3];
 }
 function getCurrentWeekNumber(): number {
-  const weekStart = new Date(getWeekStart(new Date())).getTime();
-  return Math.max(1, Math.floor((weekStart - APRIL_1_2026_MS) / (7 * 24 * 60 * 60 * 1000)) + 1);
+  const now = new Date();
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const day = monday.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  monday.setUTCDate(monday.getUTCDate() + diff);
+  return Math.max(1, Math.floor((monday.getTime() - LEAGUE_START.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1);
 }
 function weekStartToNumber(weekStart: string): number {
-  const APRIL_1_2026 = new Date("2026-04-01").getTime();
   const d = new Date(weekStart + "T00:00:00").getTime();
-  return Math.max(1, Math.floor((d - APRIL_1_2026) / (7 * 24 * 60 * 60 * 1000)) + 1);
+  return Math.max(1, Math.floor((d - LEAGUE_START.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1);
 }
 function getNextMonday(): string {
   const d = new Date();
@@ -123,6 +130,7 @@ interface ChallengeData {
 interface ParticipantData {
   name:          string;
   initials:      string;
+  avatarUrl:     string | null;
   progress:      number;
   target:        number;
   completed:     boolean;
@@ -187,14 +195,16 @@ const formLabelStyle: React.CSSProperties = {
 };
 
 // ── Progress row ───────────────────────────────────────────────────────────
-function ProgressRow({ name, initials, progress, target, completed, points, progressLabel }: {
-  name: string; initials: string; progress: number;
+function ProgressRow({ name, initials, avatarUrl, progress, target, completed, points, progressLabel }: {
+  name: string; initials: string; avatarUrl: string | null; progress: number;
   target: number; completed: boolean; points: number; progressLabel: string;
 }) {
   const pct = Math.min((progress / Math.max(target, 0.01)) * 100, 100);
   return (
     <div style={{
-      backgroundColor: "#0D1829",
+      backgroundColor: "rgba(13,24,41,0.55)",
+      backdropFilter: "blur(10px)",
+      WebkitBackdropFilter: "blur(10px)",
       border: `1px solid ${completed ? "rgba(74,124,89,0.3)" : "rgba(212,197,169,0.08)"}`,
       borderRadius: "14px", padding: "14px 16px", marginBottom: "10px",
     }}>
@@ -205,8 +215,13 @@ function ProgressRow({ name, initials, progress, target, completed, points, prog
           border: `1.5px solid ${completed ? "rgba(74,124,89,0.5)" : "rgba(201,184,122,0.25)"}`,
           display: "flex", alignItems: "center", justifyContent: "center",
           fontFamily: "Montserrat, sans-serif", fontSize: "14px", fontWeight: 700, color: "#C9B87A", flexShrink: 0,
+          overflow: "hidden",
         }}>
-          {initials}
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={name} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+          ) : (
+            initials
+          )}
         </div>
         <div style={{ flex: 1 }}>
           <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "14px", fontWeight: 600, color: "#F5F2ED", margin: 0 }}>
@@ -250,6 +265,7 @@ export default function ChallengePage() {
   const [loading,       setLoading]       = useState(true);
   const [userId,        setUserId]        = useState("");
   const [isCM,          setIsCM]          = useState(false);
+  const [myName,        setMyName]        = useState("");
   const [currentWeekNum, setCurrentWeekNum] = useState(1);
   const [challenge,     setChallenge]     = useState<ChallengeData | null>(null);
   const [participants,  setParticipants]  = useState<ParticipantData[]>([]);
@@ -274,11 +290,8 @@ export default function ChallengePage() {
       setUserId(user.id);
       const weekStart    = getWeekStart(new Date());
       const weekNum      = getCurrentWeekNumber();
-      const cmName       = getChallengeMasterName();
+      const cmName       = getChallengeMasterForWeek(0);
       setCurrentWeekNum(weekNum);
-
-      console.log("[Challenge Debug] getWeekStart(new Date()):", weekStart);
-      console.log("[Challenge Debug] querying challenges where is_active=true (no week_start filter)");
 
       // Fetch profile name, all profiles, my week activities, my streak, active challenge, past challenges — all in parallel
       const [
@@ -286,11 +299,11 @@ export default function ChallengePage() {
         { data: allProfiles },
         { data: weekActs },
         { data: streakRow },
-        { data: activeChallenges, error: activeChallengesError },
+        { data: activeChallenges },
         { data: pastChallenges },
       ] = await Promise.all([
         supabase.from("profiles").select("name").eq("id", user.id).single(),
-        supabase.from("profiles").select("id, name"),
+        supabase.from("profiles").select("id, name, avatar_url"),
         supabase.from("activities")
           .select("activity_type, distance_km")
           .eq("user_id", user.id)
@@ -304,14 +317,9 @@ export default function ChallengePage() {
           .limit(3),
       ]);
 
-      console.log("[Challenge Debug] activeChallenges raw response:", activeChallenges);
-      console.log("[Challenge Debug] activeChallenges error:", activeChallengesError);
-      console.log("[Challenge Debug] DB week_start values:", activeChallenges?.map(c => c.week_start));
-      console.log("[Challenge Debug] computed weekStart:", weekStart, "| match?", activeChallenges?.some(c => c.week_start === weekStart));
-
       const myName = myProfile?.name || "";
       const isCMNow = myName.trim().toLowerCase() === cmName.trim().toLowerCase();
-      console.log("[CM Debug] weekNum:", weekNum, "| cmName:", cmName, "| myName:", JSON.stringify(myName), "| match:", isCMNow);
+      setMyName(myName);
       setIsCM(isCMNow);
 
       // ── Active challenge ───────────────────────────────────────────────
@@ -366,6 +374,7 @@ export default function ChallengePage() {
           return {
             name,
             initials:      name.charAt(0).toUpperCase(),
+            avatarUrl:     p.avatar_url || null,
             progress:      val,
             target:        active.target_value,
             completed:     done,
@@ -439,9 +448,9 @@ export default function ChallengePage() {
             <div className="sp" style={{ height: "36px", width: "180px", borderRadius: "8px", backgroundColor: "rgba(212,197,169,0.07)", margin: "0 auto 14px" }} />
             <div style={{ display: "flex", justifyContent: "center" }}><CountdownPill /></div>
           </div>
-          <div className="sp" style={{ backgroundColor: "#0D1829", borderRadius: "20px", padding: "22px", marginBottom: "28px", height: "180px" }} />
+          <div className="sp" style={{ backgroundColor: "rgba(13,24,41,0.55)", borderRadius: "20px", padding: "22px", marginBottom: "28px", height: "180px" }} />
           {[1, 2, 3].map(i => (
-            <div key={i} className="sp" style={{ backgroundColor: "#0D1829", borderRadius: "14px", padding: "14px 16px", marginBottom: "10px", height: "88px" }} />
+            <div key={i} className="sp" style={{ backgroundColor: "rgba(13,24,41,0.55)", borderRadius: "14px", padding: "14px 16px", marginBottom: "10px", height: "88px" }} />
           ))}
           </div>{/* /zIndex wrapper */}
         </div>
@@ -450,6 +459,9 @@ export default function ChallengePage() {
   }
 
   const nextWeekNum = currentWeekNum + 1;
+  const nextWeekCM = getChallengeMasterForWeek(1);
+  const isThursdayToSunday = [4, 5, 6, 0].includes(new Date().getUTCDay());
+  console.log("[CM Banner] nextWeekCM:", nextWeekCM, "| myName:", myName, "| isThursdayToSunday:", isThursdayToSunday, "| bannerShows:", isThursdayToSunday && myName === nextWeekCM);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -461,13 +473,44 @@ export default function ChallengePage() {
         <div style={{ position: "relative", zIndex: 1 }}>
 
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: "28px" }}>
+        <div style={{ textAlign: "center", marginBottom: "28px", position: "relative" }}>
           <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "30px", fontWeight: 700, color: "#F5F2ED", margin: "0 0 14px" }}>
             Weekly Challenge
           </h1>
           <div style={{ display: "flex", justifyContent: "center" }}>
             <CountdownPill />
           </div>
+
+          {/* ── "You're up next" banner ── */}
+          {isThursdayToSunday && myName === nextWeekCM && (
+            <div
+              onClick={() => setShowForm(true)}
+              style={{
+                backgroundColor: "rgba(201,184,122,0.08)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                border: "1px solid rgba(201,184,122,0.3)",
+                borderRadius: "16px",
+                padding: "16px 18px",
+                marginTop: "20px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                textAlign: "left",
+              }}
+            >
+              <CrownIcon />
+              <div>
+                <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", fontWeight: 700, color: "#C9B87A", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 3px" }}>
+                  You&apos;re up next
+                </p>
+                <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(212,197,169,0.55)", margin: 0 }}>
+                  You&apos;re Challenge Master for Week {nextWeekNum}. Tap to create the challenge.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Section 1: Active Challenge Card ── */}
@@ -475,7 +518,8 @@ export default function ChallengePage() {
 
         {!challenge ? (
           <div style={{
-            backgroundColor: "#0D1829", border: "1px solid rgba(212,197,169,0.1)",
+            backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+            border: "1px solid rgba(212,197,169,0.1)",
             borderRadius: "16px", padding: "32px 20px", marginBottom: "28px", textAlign: "center",
           }}>
             <p style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "18px", color: "rgba(212,197,169,0.5)", margin: 0 }}>
@@ -487,7 +531,8 @@ export default function ChallengePage() {
           </div>
         ) : (
           <div style={{
-            backgroundColor: "#0D1829", border: "1.5px solid rgba(201,184,122,0.35)",
+            backgroundColor: "rgba(13,24,41,0.60)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+            border: "1.5px solid rgba(201,184,122,0.35)",
             borderRadius: "20px", padding: "22px 20px", marginBottom: "28px",
             boxShadow: "0 6px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(201,184,122,0.06)",
           }}>
@@ -542,7 +587,8 @@ export default function ChallengePage() {
           <div style={{ marginBottom: "28px" }}>
             <p style={sectionTitle}>Your Challenge Master Duties</p>
             <div style={{
-              backgroundColor: "#0D1829", border: "1px solid rgba(201,184,122,0.2)",
+              backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+              border: "1px solid rgba(201,184,122,0.2)",
               borderRadius: "16px", padding: "18px",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
@@ -588,7 +634,8 @@ export default function ChallengePage() {
         {/* ── Section 4: Create Challenge Form ── */}
         {showForm && !formSubmitted && (
           <div style={{
-            backgroundColor: "#0D1829", border: "1px solid rgba(212,197,169,0.12)",
+            backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+            border: "1px solid rgba(212,197,169,0.12)",
             borderRadius: "16px", padding: "20px", marginBottom: "28px",
           }}>
             <p style={{ ...sectionTitle, marginBottom: "18px" }}>New Challenge — Week {nextWeekNum}</p>
@@ -618,7 +665,7 @@ export default function ChallengePage() {
                   cursor: "pointer", colorScheme: "dark" as React.CSSProperties["colorScheme"],
                 }}
               >
-                {CHALLENGE_TYPES.map(t => <option key={t} value={t} style={{ backgroundColor: "#0D1829" }}>{t}</option>)}
+                {CHALLENGE_TYPES.map(t => <option key={t} value={t} style={{ backgroundColor: "rgba(13,24,41,0.55)" }}>{t}</option>)}
               </select>
             </div>
 
@@ -667,7 +714,8 @@ export default function ChallengePage() {
               const allDone = completedOf === total && total > 0;
               return (
                 <div key={weekNum} style={{
-                  backgroundColor: "#0D1829", border: "1px solid rgba(212,197,169,0.08)",
+                  backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+                  border: "1px solid rgba(212,197,169,0.08)",
                   borderRadius: "14px", padding: "14px 16px", marginBottom: "10px",
                   display: "flex", alignItems: "center", justifyContent: "space-between",
                 }}>

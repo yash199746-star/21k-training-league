@@ -13,6 +13,7 @@ interface Player {
   rank: number;
   name: string;
   initials: string;
+  avatarUrl: string | null;
   points: number;
   streak: number;
   todayLabel: string;
@@ -110,7 +111,9 @@ function PlayerCard({ player }: { player: Player }) {
 
   return (
     <div style={{
-      backgroundColor: isFirst ? "rgba(201,184,122,0.05)" : "#1A2744",
+      backgroundColor: isFirst ? "rgba(13,24,41,0.60)" : "rgba(13,24,41,0.55)",
+      backdropFilter: "blur(10px)",
+      WebkitBackdropFilter: "blur(10px)",
       border: isFirst
         ? "1px solid rgba(201,184,122,0.38)"
         : "1px solid rgba(212,197,169,0.07)",
@@ -157,8 +160,13 @@ function PlayerCard({ player }: { player: Player }) {
           fontWeight: 700,
           color: "#C9B87A",
           flexShrink: 0,
+          overflow: "hidden",
         }}>
-          {player.initials}
+          {player.avatarUrl ? (
+            <img src={player.avatarUrl} alt={player.name} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+          ) : (
+            player.initials
+          )}
         </div>
 
         {/* Name + today badge */}
@@ -246,7 +254,7 @@ function PlayerCard({ player }: { player: Player }) {
         borderTop: "1px solid rgba(212,197,169,0.07)",
       }}>
         <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(245,242,237,0.6)" }}>
-          🔥 <span style={{ fontWeight: 600, color: "#F5F2ED" }}>{player.streak}</span> day streak
+          ⚡ <span style={{ fontWeight: 600, color: "#F5F2ED" }}>{player.streak}</span> day streak
         </div>
 
         {player.challengeMaster && (
@@ -298,7 +306,7 @@ export default function HomePage() {
         { data: activities, error: activitiesError },
         { data: streaks },
       ] = await Promise.all([
-        supabase.from("profiles").select("id, name, email"),
+        supabase.from("profiles").select("id, name, email, avatar_url"),
         supabase.from("activities").select("user_id, date, activity_type, activity_subtype, distance_km, total_points_that_day"),
         supabase.from("streaks").select("user_id, current_streak"),
       ]);
@@ -330,6 +338,7 @@ export default function HomePage() {
           rank:           0,
           name,
           initials,
+          avatarUrl:      p.avatar_url || null,
           points,
           streak:         streakByUser[p.id] || 0,
           todayLabel:     today_.label,
@@ -367,7 +376,7 @@ export default function HomePage() {
         <div style={{ position: "relative", zIndex: 1 }}>
 
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: "20px" }}>
+        <div style={{ textAlign: "center", marginBottom: "20px", position: "relative" }}>
           <p style={{
             fontFamily: "Montserrat, sans-serif",
             fontSize: "10px",

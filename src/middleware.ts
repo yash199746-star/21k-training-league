@@ -36,6 +36,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
+  if (user && pathname.startsWith('/admin') && user.email !== 'yash199746@gmail.com') {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
   // Show splash on every fresh page load unless arriving from it
   if (user && pathname === '/') {
     const fromSplash = request.nextUrl.searchParams.get('from') === 'splash'

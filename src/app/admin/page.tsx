@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase-browser";
 
 // ── Mock data ────────────────────────────────────────────────────────────────
 const USERS = [
@@ -25,7 +26,9 @@ const sectionTitle: React.CSSProperties = {
 };
 
 const card: React.CSSProperties = {
-  backgroundColor: "#1A2744",
+  backgroundColor: "rgba(13,24,41,0.55)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
   border: "1px solid rgba(212,197,169,0.1)",
   borderRadius: "16px",
   padding: "18px",
@@ -115,6 +118,14 @@ function CrownIcon() {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function AdminPage() {
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data: { user } }) => {
+      setAllowed(user?.email === "yash199746@gmail.com");
+    });
+  }, []);
+
   // Correction form
   const [cUser,     setCUser]     = useState("Yash");
   const [cDate,     setCDate]     = useState(new Date().toISOString().split("T")[0]);
@@ -155,6 +166,18 @@ export default function AdminPage() {
     console.log("Correction applied:", { user: cUser, date: cDate, type: cType, distance: cDistance, duration: cDuration, points: cPoints, reason: cReason });
     setCDone(true);
     setCErrors([]);
+  }
+
+  if (allowed === null) return null;
+
+  if (!allowed) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0D1829" }}>
+        <div style={{ textAlign: "center" }}>
+          <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "14px", color: "#D4C5A9" }}>Access restricted</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -226,7 +249,9 @@ export default function AdminPage() {
           { label: "Race Date",           value: "13 Sept 2026"  },
         ].map(({ label, value }) => (
           <div key={label} style={{
-            backgroundColor: "#1A2744",
+            backgroundColor: "rgba(13,24,41,0.55)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
             border: "1px solid rgba(212,197,169,0.08)",
             borderRadius: "14px",
             padding: "14px",
