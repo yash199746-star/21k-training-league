@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import AppLayout from "@/components/AppLayout";
 import CountdownPill from "@/components/CountdownPill";
@@ -280,6 +280,14 @@ export default function ChallengePage() {
   const [formSubmitted,  setFormSubmitted]  = useState(false);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formErrors,     setFormErrors]     = useState<string[]>([]);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to the form whenever it opens
+  useEffect(() => {
+    if (showForm && formRef.current) {
+      formRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [showForm]);
 
   useEffect(() => {
     async function fetchData() {
@@ -515,7 +523,7 @@ export default function ChallengePage() {
 
         {/* ── Challenge creation form ── */}
         {showForm && !formSubmitted && (
-          <div style={{
+          <div ref={formRef} style={{
             backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
             border: "1px solid rgba(212,197,169,0.12)",
             borderRadius: "16px", padding: "20px", marginBottom: "28px",

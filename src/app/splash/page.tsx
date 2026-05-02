@@ -191,6 +191,7 @@ export default function SplashPage() {
   }, [router]);
 
   function handleContinue() {
+    document.cookie = `splashShown=${Date.now()}; max-age=7200; path=/`;
     router.push("/?from=splash");
   }
 

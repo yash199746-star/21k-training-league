@@ -40,10 +40,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // Show splash on every fresh page load unless arriving from it
+  // Show splash unless: arriving from it, or shown within the last 2 hours
   if (user && pathname === '/') {
     const fromSplash = request.nextUrl.searchParams.get('from') === 'splash'
     if (!fromSplash) {
+      const splashShown = request.cookies.get('splashShown')?.value
+      const twoHoursMs = 2 * 60 * 60 * 1000
+      if (splashShown && Date.now() - parseInt(splashShown) < twoHoursMs) {
+        return response
+      }
       return NextResponse.redirect(new URL('/splash', request.url))
     }
   }
