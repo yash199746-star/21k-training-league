@@ -497,38 +497,37 @@ export default function ChallengePage() {
           <div style={{ display: "flex", justifyContent: "center" }}>
             <CountdownPill />
           </div>
-
-          {/* ── "You're up next" banner ── */}
-          {bannerCondition && (
-            <div
-              onClick={() => { setShowForm(true); window.scrollTo({ top: 0 }); }}
-              style={{
-                backgroundColor: "rgba(201,184,122,0.08)",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
-                border: "1px solid rgba(201,184,122,0.3)",
-                borderRadius: "16px",
-                padding: "16px 18px",
-                marginTop: "20px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                textAlign: "left",
-              }}
-            >
-              <CrownIcon />
-              <div>
-                <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", fontWeight: 700, color: "#C9B87A", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 3px" }}>
-                  You&apos;re up next
-                </p>
-                <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(212,197,169,0.55)", margin: 0 }}>
-                  You&apos;re Challenge Master for Week {nextWeekNum}. Tap to create the challenge.
-                </p>
-              </div>
-            </div>
-          )}
         </div>
+
+        {/* ── "You're up next" banner ── */}
+        {bannerCondition && (
+          <div
+            onClick={() => { setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            style={{
+              backgroundColor: "rgba(201,184,122,0.08)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              border: "1px solid rgba(201,184,122,0.3)",
+              borderRadius: "16px",
+              padding: "16px 18px",
+              marginBottom: "24px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+            }}
+          >
+            <CrownIcon />
+            <div>
+              <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", fontWeight: 700, color: "#C9B87A", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 3px" }}>
+                You&apos;re up next
+              </p>
+              <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(212,197,169,0.55)", margin: 0 }}>
+                You&apos;re Challenge Master for Week {nextWeekNum}. Tap to create the challenge.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* ── Challenge creation form ── */}
         {showForm && !formSubmitted && (

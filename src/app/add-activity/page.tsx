@@ -199,8 +199,11 @@ export default function AddActivityPage() {
   }, [date, user]);
 
   // Derived values
-  const today   = todayISO();
-  const minDate = nDaysAgoISO(2);
+  const today        = todayISO();
+  const _todayDate   = new Date();
+  const _yestDate    = new Date(_todayDate);
+  _yestDate.setDate(_todayDate.getDate() - 1);
+  const yesterdayStr = _yestDate.toISOString().split("T")[0];
 
   const activityRemaining = ACTIVITY_LIMIT - activityUsed;
   const scoring = activityType ? calculatePoints(
@@ -243,8 +246,7 @@ export default function AddActivityPage() {
     if (activityType === "activity") {
       if (!duration || parseInt(duration, 10) <= 0) errs.push("Please enter a valid duration.");
     }
-    if (date > today)   errs.push("Date cannot be in the future.");
-    if (date < minDate) errs.push("Cannot log activities older than 2 days.");
+    if (date < yesterdayStr || date > today) errs.push("Can only log activities for today or yesterday.");
     if (activityType === "activity" && activityRemaining <= 0) errs.push("Maximum 2 activity days reached this week.");
     if (activityType === "rest"     && restUsed)               errs.push("Rest day already used this week.");
     return errs;
@@ -471,7 +473,7 @@ export default function AddActivityPage() {
               fontWeight: 600,
               margin: 0,
             }}>
-              {date === today ? "Activity already logged for today." : `Activity already logged for ${date}.`}
+              {date === today ? "Activity already logged for today." : "Activity already logged for yesterday."}
             </p>
           </div>
         )}
@@ -666,7 +668,7 @@ export default function AddActivityPage() {
                 {/* Date */}
                 <div style={{ marginBottom: "20px" }}>
                   <label style={labelStyle}>Date</label>
-                  <input type="date" value={date} min={minDate} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
+                  <input type="date" value={date} min={yesterdayStr} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
                 </div>
 
                 {/* Points preview */}
@@ -756,7 +758,7 @@ export default function AddActivityPage() {
                 {/* Date */}
                 <div style={{ marginBottom: "20px" }}>
                   <label style={labelStyle}>Date</label>
-                  <input type="date" value={date} min={minDate} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
+                  <input type="date" value={date} min={yesterdayStr} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
                 </div>
 
                 {/* Note */}
@@ -794,7 +796,7 @@ export default function AddActivityPage() {
               <>
                 <div style={{ marginBottom: "20px" }}>
                   <label style={labelStyle}>Date</label>
-                  <input type="date" value={date} min={minDate} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
+                  <input type="date" value={date} min={yesterdayStr} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
                 </div>
                 <div style={{
                   backgroundColor: "rgba(212,197,169,0.04)",
