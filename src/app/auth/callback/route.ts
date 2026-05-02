@@ -39,12 +39,22 @@ export async function GET(request: NextRequest) {
   const name = user.user_metadata?.full_name || user.user_metadata?.name ||
     user.email?.split('@')[0] || 'User'
 
-  await supabase.from('profiles').upsert({
-    id: user.id,
-    email: user.email,
-    name,
-    avatar_url: avatarUrl,
-  }, { onConflict: 'id' })
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .eq('id', user.id)
+    .single()
+
+  if (existingProfile) {
+    await supabase
+      .from('profiles')
+      .update({ avatar_url: avatarUrl })
+      .eq('id', user.id)
+  } else {
+    await supabase
+      .from('profiles')
+      .insert({ id: user.id, email: user.email, name, avatar_url: avatarUrl })
+  }
 
   return NextResponse.redirect(new URL('/splash', request.url))
 }
