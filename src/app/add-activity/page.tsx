@@ -16,7 +16,7 @@ const ACTIVITY_LIMIT = 2;
 
 // ── CM rotation ─────────────────────────────────────────────────────────────
 const CM_ORDER = ["Yash", "Hardik", "Devansh"];
-const LEAGUE_START = new Date(Date.UTC(2026, 3, 6));
+const LEAGUE_START = new Date(Date.UTC(2026, 4, 4)); // Monday May 4, 2026
 
 function getChallengeMasterForWeek(weekOffset: number): string {
   const now = new Date();

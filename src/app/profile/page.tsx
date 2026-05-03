@@ -10,16 +10,16 @@ import { getWeekStart } from "@/lib/scoring";
 
 // ── CM rotation (same logic as leaderboard) ────────────────────────────────
 const CM_ORDER = ["Yash", "Hardik", "Devansh"];
-const APRIL_1_2026_MS = new Date("2026-04-01").getTime();
+const LEAGUE_START_MS = new Date(Date.UTC(2026, 4, 4)).getTime(); // Monday May 4, 2026
 
 function getChallengeMasterName(): string {
   const weekStart = new Date(getWeekStart(new Date())).getTime();
-  const wk = Math.floor((weekStart - APRIL_1_2026_MS) / (7 * 24 * 60 * 60 * 1000));
+  const wk = Math.floor((weekStart - LEAGUE_START_MS) / (7 * 24 * 60 * 60 * 1000));
   return CM_ORDER[((wk % 3) + 3) % 3];
 }
 function getCurrentWeekNumber(): number {
   const weekStart = new Date(getWeekStart(new Date())).getTime();
-  return Math.max(1, Math.floor((weekStart - APRIL_1_2026_MS) / (7 * 24 * 60 * 60 * 1000)) + 1);
+  return Math.max(1, Math.floor((weekStart - LEAGUE_START_MS) / (7 * 24 * 60 * 60 * 1000)) + 1);
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
