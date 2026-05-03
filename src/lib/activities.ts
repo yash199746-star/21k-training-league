@@ -5,7 +5,7 @@ import { calculatePoints, getWeekStart } from '@/lib/scoring'
 async function recalculateStreak(supabase: any, userId: string) {
   const { data: allActivities } = await supabase
     .from('activities')
-    .select('date, activity_type')
+    .select('id, date, activity_type, points')
     .eq('user_id', userId)
     .order('date', { ascending: true })
 
@@ -16,53 +16,88 @@ async function recalculateStreak(supabase: any, userId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const uniqueDates: string[] = Array.from(new Set<string>(allActivities.map((a: any) => a.date as string))).sort()
 
+  // Assign streak position to every unique date
+  const dateStreakMap: Record<string, number> = {}
+  let streakCount = 1
+  dateStreakMap[uniqueDates[0]] = 1
+
+  for (let i = 1; i < uniqueDates.length; i++) {
+    const prev = new Date(uniqueDates[i - 1])
+    const curr = new Date(uniqueDates[i])
+    const diffDays = Math.round((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24))
+    if (diffDays === 1) {
+      streakCount++
+    } else {
+      streakCount = 1
+    }
+    dateStreakMap[uniqueDates[i]] = streakCount
+  }
+
+  // Update ALL activity rows with correct streak bonus and total points
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const activity of allActivities) {
+    const streakPosition = dateStreakMap[activity.date] || 1
+    const streakBonus = Math.min(streakPosition, 7)
+    const totalPoints = (activity.points || 0) + streakBonus
+
+    await supabase
+      .from('activities')
+      .update({ streak_bonus: streakBonus, total_points_that_day: totalPoints })
+      .eq('id', activity.id)
+  }
+
+  // Recalculate weekly_stats total_points and total_km for all weeks
+  const { data: weeklyStats } = await supabase
+    .from('weekly_stats')
+    .select('week_start')
+    .eq('user_id', userId)
+
+  if (weeklyStats) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const week of weeklyStats) {
+      const weekEnd = new Date(new Date(week.week_start).getTime() + 7 * 24 * 60 * 60 * 1000)
+        .toISOString().split('T')[0]
+
+      const { data: weekActivities } = await supabase
+        .from('activities')
+        .select('total_points_that_day, distance_km, activity_type')
+        .eq('user_id', userId)
+        .gte('date', week.week_start)
+        .lt('date', weekEnd)
+
+      if (weekActivities) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const totalPoints = weekActivities.reduce((sum: number, a: any) => sum + (a.total_points_that_day || 0), 0)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const totalKm = weekActivities.filter((a: any) => a.activity_type === 'run')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .reduce((sum: number, a: any) => sum + (a.distance_km || 0), 0)
+
+        await supabase
+          .from('weekly_stats')
+          .update({ total_points: totalPoints, total_km: totalKm })
+          .eq('user_id', userId)
+          .eq('week_start', week.week_start)
+      }
+    }
+  }
+
+  // Determine current streak (only active if last activity was today or yesterday)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const todayStr = today.toISOString().split('T')[0]
-
   const yesterday = new Date(today)
   yesterday.setDate(today.getDate() - 1)
   const yesterdayStr = yesterday.toISOString().split('T')[0]
 
   const lastDate = uniqueDates[uniqueDates.length - 1]
+  const currentStreak = (lastDate === todayStr || lastDate === yesterdayStr)
+    ? dateStreakMap[lastDate]
+    : 0
 
-  if (lastDate !== todayStr && lastDate !== yesterdayStr) {
-    return { currentStreak: 0, longestStreak: calculateLongestStreak(uniqueDates), lastActivityDate: lastDate }
-  }
+  const longestStreak = Math.max(...Object.values(dateStreakMap))
 
-  let currentStreak = 1
-  for (let i = uniqueDates.length - 2; i >= 0; i--) {
-    const curr = new Date(uniqueDates[i + 1])
-    const prev = new Date(uniqueDates[i])
-    const diffDays = Math.round((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24))
-    if (diffDays === 1) {
-      currentStreak++
-    } else {
-      break
-    }
-  }
-
-  return { currentStreak, longestStreak: calculateLongestStreak(uniqueDates), lastActivityDate: lastDate }
-}
-
-function calculateLongestStreak(sortedDates: string[]): number {
-  if (sortedDates.length === 0) return 0
-  let longest = 1
-  let current = 1
-
-  for (let i = 1; i < sortedDates.length; i++) {
-    const prev = new Date(sortedDates[i - 1])
-    const curr = new Date(sortedDates[i])
-    const diffDays = Math.round((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24))
-    if (diffDays === 1) {
-      current++
-      longest = Math.max(longest, current)
-    } else {
-      current = 1
-    }
-  }
-
-  return longest
+  return { currentStreak, longestStreak, lastActivityDate: lastDate }
 }
 
 export async function logActivity({
@@ -101,7 +136,7 @@ export async function logActivity({
     return { success: false, error: 'Rest day already used this week' }
   }
 
-  // Insert activity with placeholder streak values — corrected below after recalc
+  // Insert activity with placeholder points — recalculateStreak will correct them
   const { error: activityError } = await supabase
     .from('activities')
     .insert({
@@ -118,23 +153,7 @@ export async function logActivity({
 
   if (activityError) return { success: false, error: activityError.message }
 
-  // Recalculate streak from scratch based on all activity dates
-  const { currentStreak, longestStreak, lastActivityDate } = await recalculateStreak(supabase, userId)
-
-  const streakBonus = Math.min(currentStreak, 7)
-  const totalPoints = basePoints + streakBonus
-
-  // Correct the activity row with final streak bonus and total points
-  await supabase
-    .from('activities')
-    .update({
-      streak_bonus: streakBonus,
-      total_points_that_day: totalPoints,
-    })
-    .eq('user_id', userId)
-    .eq('date', date)
-
-  // Update weekly stats with correct totals
+  // Update weekly stats usage counts (total_points corrected by recalculateStreak below)
   const { error: weeklyError } = await supabase
     .from('weekly_stats')
     .upsert({
@@ -143,11 +162,17 @@ export async function logActivity({
       runs_used: activityType === 'run' ? (weeklyStats?.runs_used || 0) + 1 : (weeklyStats?.runs_used || 0),
       activity_days_used: activityType === 'activity' ? (weeklyStats?.activity_days_used || 0) + 1 : (weeklyStats?.activity_days_used || 0),
       rest_day_used: activityType === 'rest' ? 1 : (weeklyStats?.rest_day_used || 0),
-      total_points: (weeklyStats?.total_points || 0) + totalPoints,
+      total_points: (weeklyStats?.total_points || 0) + basePoints,
       total_km: activityType === 'run' ? (weeklyStats?.total_km || 0) + (distanceKm || 0) : (weeklyStats?.total_km || 0),
     }, { onConflict: 'user_id,week_start' })
 
   if (weeklyError) return { success: false, error: weeklyError.message }
+
+  // Recalculate all streaks and points from scratch, updating every affected row
+  const { currentStreak, longestStreak, lastActivityDate } = await recalculateStreak(supabase, userId)
+
+  const streakBonus = Math.min(currentStreak, 7)
+  const totalPoints = basePoints + streakBonus
 
   // Upsert streaks table with recalculated values
   await supabase
