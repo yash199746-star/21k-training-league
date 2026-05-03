@@ -91,7 +91,7 @@ function LoginForm() {
           LADAKH HALF MARATHON · 13 SEPT 2026
         </p>
         <div style={{ marginBottom: "32px" }}>
-          <CountdownPill />
+          <CountdownPill showSubtitle={false} />
         </div>
       </div>
 

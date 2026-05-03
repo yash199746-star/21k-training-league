@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from 'react'
 
-export default function CountdownPill() {
+export default function CountdownPill({ showSubtitle = true }: { showSubtitle?: boolean } = {}) {
   const [days, setDays] = useState<number | null>(null)
 
   useEffect(() => {
@@ -29,16 +29,18 @@ export default function CountdownPill() {
       }}>
         {days} DAYS TO RACE
       </div>
-      <p style={{
-        fontFamily: 'Montserrat, sans-serif',
-        fontSize: '10px',
-        letterSpacing: '0.15em',
-        color: '#D4C5A9',
-        margin: '6px 0 0',
-        textAlign: 'center',
-      }}>
-        LADAKH HALF MARATHON · 13 SEPT 2026
-      </p>
+      {showSubtitle && (
+        <p style={{
+          fontFamily: 'Montserrat, sans-serif',
+          fontSize: '10px',
+          letterSpacing: '0.15em',
+          color: '#D4C5A9',
+          margin: '6px 0 0',
+          textAlign: 'center',
+        }}>
+          LADAKH HALF MARATHON · 13 SEPT 2026
+        </p>
+      )}
     </div>
   )
 }
