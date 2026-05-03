@@ -4,15 +4,38 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-browser";
 
-// ── Mock data ────────────────────────────────────────────────────────────────
-const USERS = [
-  { name: "Yash",  email: "yash@example.com",  points: 142, streak: 8 },
-  { name: "Arjun", email: "arjun@example.com", points: 118, streak: 5 },
-  { name: "Priya", email: "priya@example.com", points: 97,  streak: 3 },
-];
+// ── CM rotation ───────────────────────────────────────────────────────────────
+const CM_ORDER = ["Yash", "Hardik", "Devansh"];
+const LEAGUE_START = new Date(Date.UTC(2026, 3, 6)); // Monday April 6 2026
 
-const CM_CURRENT = { name: "Yash",  week: 12 };
-const CM_NEXT    = { name: "Arjun", week: 13 };
+function getChallengeMasterForWeek(weekOffset: number): string {
+  const now = new Date();
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const day = monday.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  monday.setUTCDate(monday.getUTCDate() + diff);
+  const targetMonday = new Date(monday);
+  targetMonday.setUTCDate(targetMonday.getUTCDate() + (weekOffset * 7));
+  const weekNum = Math.floor((targetMonday.getTime() - LEAGUE_START.getTime()) / (7 * 24 * 60 * 60 * 1000));
+  return CM_ORDER[((weekNum % 3) + 3) % 3];
+}
+
+function getCurrentWeekNumber(): number {
+  const now = new Date();
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const day = monday.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  monday.setUTCDate(monday.getUTCDate() + diff);
+  return Math.max(1, Math.floor((monday.getTime() - LEAGUE_START.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1);
+}
+
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  points: number;
+  streak: number;
+}
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
 const sectionTitle: React.CSSProperties = {
@@ -120,14 +143,58 @@ function CrownIcon() {
 export default function AdminPage() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
+  // Real data
+  const [users,        setUsers]        = useState<UserProfile[]>([]);
+  const [activityCount, setActivityCount] = useState<number>(0);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+
   useEffect(() => {
-    createClient().auth.getUser().then(({ data: { user } }) => {
-      setAllowed(user?.email === "yash199746@gmail.com");
-    });
+    async function init() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const isAllowed = user?.email === "yash199746@gmail.com";
+      setAllowed(isAllowed);
+      if (!isAllowed) return;
+
+      const [
+        { data: profiles },
+        { data: allStreaks },
+        { data: allWeeklyStats },
+        { count },
+      ] = await Promise.all([
+        supabase.from("profiles").select("id, name, email").order("name"),
+        supabase.from("streaks").select("user_id, current_streak"),
+        supabase.from("weekly_stats").select("user_id, total_points"),
+        supabase.from("activities").select("id", { count: "exact", head: true }),
+      ]);
+
+      // Sum all-time points per user across all weeks
+      const pointsMap: Record<string, number> = {};
+      for (const s of allWeeklyStats ?? []) {
+        pointsMap[s.user_id] = (pointsMap[s.user_id] || 0) + (s.total_points || 0);
+      }
+
+      const built: UserProfile[] = (profiles ?? []).map(p => ({
+        id:     p.id,
+        name:   p.name   || "Unknown",
+        email:  p.email  || "",
+        points: pointsMap[p.id] || 0,
+        streak: allStreaks?.find(s => s.user_id === p.id)?.current_streak || 0,
+      }));
+
+      setUsers(built);
+      setActivityCount(count ?? 0);
+      if (built.length > 0) {
+        setCUser(built[0].name);
+        setNewCM(built[0].name);
+      }
+      setLoadingUsers(false);
+    }
+    init();
   }, []);
 
   // Correction form
-  const [cUser,     setCUser]     = useState("Yash");
+  const [cUser,     setCUser]     = useState("");
   const [cDate,     setCDate]     = useState(new Date().toISOString().split("T")[0]);
   const [cType,     setCType]     = useState<"run"|"activity"|"rest">("run");
   const [cDistance, setCDistance] = useState("");
@@ -143,29 +210,28 @@ export default function AdminPage() {
   const [editPointsVal,  setEditPointsVal]  = useState("");
 
   // Challenge Master override
-  const [showCMForm,    setShowCMForm]    = useState(false);
-  const [newCM,         setNewCM]         = useState(CM_CURRENT.name);
-  const [cmDone,        setCMDone]        = useState(false);
+  const [showCMForm, setShowCMForm] = useState(false);
+  const [newCM,      setNewCM]      = useState("");
+  const [cmDone,     setCMDone]     = useState(false);
 
   // League settings
   const [raceDate,      setRaceDate]      = useState("2026-09-13");
   const [leagueName,    setLeagueName]    = useState("21K Training League");
-  const [seasonStart,   setSeasonStart]   = useState("2026-04-01");
+  const [seasonStart,   setSeasonStart]   = useState("2026-04-06");
   const [settingsDone,  setSettingsDone]  = useState(false);
 
   // Danger zone
-  const [resetText,  setResetText]  = useState("");
-  const [resetDone,  setResetDone]  = useState(false);
+  const [resetText, setResetText] = useState("");
+  const [resetDone, setResetDone] = useState(false);
 
   function handleCorrection() {
     const errs: string[] = [];
     if (!cReason.trim()) errs.push("Please provide a reason for the correction.");
     if (cType === "run" && !cDistance) errs.push("Please enter a distance.");
-    if (setCErrors.length) setCErrors([]);
     if (errs.length) { setCErrors(errs); return; }
+    setCErrors([]);
     console.log("Correction applied:", { user: cUser, date: cDate, type: cType, distance: cDistance, duration: cDuration, points: cPoints, reason: cReason });
     setCDone(true);
-    setCErrors([]);
   }
 
   if (allowed === null) return null;
@@ -180,6 +246,10 @@ export default function AdminPage() {
     );
   }
 
+  const currentWeekNum = getCurrentWeekNumber();
+  const cmCurrent      = getChallengeMasterForWeek(0);
+  const cmNext         = getChallengeMasterForWeek(1);
+
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#0D1829", padding: "52px 20px 60px", position: "relative" }}>
       <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0, backgroundImage: "url(/ladakh.png)", backgroundSize: "cover", backgroundPosition: "center 40%", backgroundRepeat: "no-repeat", backgroundAttachment: "scroll", pointerEvents: "none" }}>
@@ -188,46 +258,24 @@ export default function AdminPage() {
       <div style={{ position: "relative", zIndex: 1 }}>
 
       {/* Back button */}
-      <Link href="/" style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "4px",
-        textDecoration: "none",
-        marginBottom: "20px",
-      }}>
+      <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "4px", textDecoration: "none", marginBottom: "20px" }}>
         <ChevronLeft />
-        <span style={{
-          fontFamily: "Montserrat, sans-serif",
-          fontSize: "12px",
-          fontWeight: 600,
-          color: "rgba(212,197,169,0.6)",
-        }}>
+        <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", fontWeight: 600, color: "rgba(212,197,169,0.6)" }}>
           Home
         </span>
       </Link>
 
       {/* Header */}
       <div style={{ textAlign: "center", marginBottom: "28px" }}>
-        <h1 style={{
-          fontFamily: "'Playfair Display', Georgia, serif",
-          fontSize: "30px",
-          fontWeight: 700,
-          color: "#F5F2ED",
-          margin: "0 0 12px",
-        }}>
+        <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "30px", fontWeight: 700, color: "#F5F2ED", margin: "0 0 12px" }}>
           Admin Panel
         </h1>
         <div style={{ display: "flex", justifyContent: "center" }}>
           <span style={{
-            fontFamily: "Montserrat, sans-serif",
-            fontSize: "10px",
-            fontWeight: 700,
-            color: "rgba(210,70,70,0.9)",
-            letterSpacing: "0.2em",
-            backgroundColor: "rgba(210,70,70,0.1)",
-            border: "1px solid rgba(210,70,70,0.25)",
-            borderRadius: "999px",
-            padding: "5px 14px",
+            fontFamily: "Montserrat, sans-serif", fontSize: "10px", fontWeight: 700,
+            color: "rgba(210,70,70,0.9)", letterSpacing: "0.2em",
+            backgroundColor: "rgba(210,70,70,0.1)", border: "1px solid rgba(210,70,70,0.25)",
+            borderRadius: "999px", padding: "5px 14px",
           }}>
             RESTRICTED ACCESS
           </span>
@@ -236,44 +284,21 @@ export default function AdminPage() {
 
       {/* ── Section 1: League Overview ── */}
       <p style={sectionTitle}>League Overview</p>
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(2, 1fr)",
-        gap: "10px",
-        marginBottom: "28px",
-      }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px", marginBottom: "28px" }}>
         {[
-          { label: "League Start",        value: "1 Apr 2026"    },
-          { label: "Activities Logged",   value: "47"            },
-          { label: "Current Week",        value: "Week 12"       },
-          { label: "Race Date",           value: "13 Sept 2026"  },
+          { label: "League Start",      value: "6 Apr 2026"                              },
+          { label: "Activities Logged", value: loadingUsers ? "—" : String(activityCount) },
+          { label: "Current Week",      value: `Week ${currentWeekNum}`                  },
+          { label: "Race Date",         value: "13 Sept 2026"                            },
         ].map(({ label, value }) => (
           <div key={label} style={{
-            backgroundColor: "rgba(13,24,41,0.55)",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-            border: "1px solid rgba(212,197,169,0.08)",
-            borderRadius: "14px",
-            padding: "14px",
+            backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+            border: "1px solid rgba(212,197,169,0.08)", borderRadius: "14px", padding: "14px",
           }}>
-            <p style={{
-              fontFamily: "Montserrat, sans-serif",
-              fontSize: "9px",
-              fontWeight: 700,
-              color: "rgba(212,197,169,0.4)",
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              margin: "0 0 6px",
-            }}>
+            <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "9px", fontWeight: 700, color: "rgba(212,197,169,0.4)", letterSpacing: "0.15em", textTransform: "uppercase", margin: "0 0 6px" }}>
               {label}
             </p>
-            <p style={{
-              fontFamily: "Montserrat, sans-serif",
-              fontSize: "15px",
-              fontWeight: 700,
-              color: "#C9B87A",
-              margin: 0,
-            }}>
+            <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "15px", fontWeight: 700, color: "#C9B87A", margin: 0 }}>
               {value}
             </p>
           </div>
@@ -284,15 +309,7 @@ export default function AdminPage() {
       <p style={sectionTitle}>Manual Activity Correction</p>
       <div style={{ ...card, marginBottom: "28px" }}>
         {cDone ? (
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            backgroundColor: "rgba(74,124,89,0.1)",
-            border: "1px solid rgba(74,124,89,0.3)",
-            borderRadius: "12px",
-            padding: "14px",
-          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", backgroundColor: "rgba(74,124,89,0.1)", border: "1px solid rgba(74,124,89,0.3)", borderRadius: "12px", padding: "14px" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A7C59" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 7"/></svg>
             <div>
               <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "13px", fontWeight: 700, color: "#4A7C59", margin: 0 }}>Correction Applied</p>
@@ -307,7 +324,7 @@ export default function AdminPage() {
             <div>
               <label style={labelStyle}>User</label>
               <select value={cUser} onChange={e => setCUser(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
-                {USERS.map(u => <option key={u.name} value={u.name} style={{ backgroundColor: "#0D1829" }}>{u.name}</option>)}
+                {users.map(u => <option key={u.id} value={u.name} style={{ backgroundColor: "#0D1829" }}>{u.name}</option>)}
               </select>
             </div>
 
@@ -326,18 +343,12 @@ export default function AdminPage() {
                     key={t}
                     onClick={() => setCType(t)}
                     style={{
-                      flex: 1,
-                      padding: "10px 0",
-                      borderRadius: "10px",
+                      flex: 1, padding: "10px 0", borderRadius: "10px",
                       border: cType === t ? "1.5px solid #C9B87A" : "1px solid rgba(212,197,169,0.15)",
                       backgroundColor: cType === t ? "rgba(201,184,122,0.1)" : "transparent",
-                      fontFamily: "Montserrat, sans-serif",
-                      fontSize: "10px",
-                      fontWeight: 700,
+                      fontFamily: "Montserrat, sans-serif", fontSize: "10px", fontWeight: 700,
                       color: cType === t ? "#C9B87A" : "rgba(212,197,169,0.4)",
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      cursor: "pointer",
+                      letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer",
                     }}
                   >
                     {t === "run" ? "Run" : t === "activity" ? "Activity" : "Rest"}
@@ -370,10 +381,8 @@ export default function AdminPage() {
             <div>
               <label style={labelStyle}>Reason for Correction</label>
               <textarea
-                value={cReason}
-                onChange={e => setCReason(e.target.value)}
-                placeholder="Describe why this correction is needed..."
-                rows={3}
+                value={cReason} onChange={e => setCReason(e.target.value)}
+                placeholder="Describe why this correction is needed..." rows={3}
                 style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5 }}
               />
             </div>
@@ -395,27 +404,22 @@ export default function AdminPage() {
       {/* ── Section 3: User Management ── */}
       <p style={sectionTitle}>User Management</p>
       <div style={{ marginBottom: "28px" }}>
-        {USERS.map(user => (
-          <div key={user.name} style={card}>
+        {loadingUsers ? (
+          <div style={{ ...card, textAlign: "center" }}>
+            <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(212,197,169,0.4)", margin: 0 }}>Loading users…</p>
+          </div>
+        ) : users.map(user => (
+          <div key={user.id} style={card}>
             {/* User info row */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <div style={{
-                  width: "38px",
-                  height: "38px",
-                  borderRadius: "50%",
-                  backgroundColor: "rgba(201,184,122,0.1)",
-                  border: "1px solid rgba(201,184,122,0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontFamily: "Montserrat, sans-serif",
-                  fontSize: "14px",
-                  fontWeight: 700,
-                  color: "#C9B87A",
-                  flexShrink: 0,
+                  width: "38px", height: "38px", borderRadius: "50%",
+                  backgroundColor: "rgba(201,184,122,0.1)", border: "1px solid rgba(201,184,122,0.2)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: "Montserrat, sans-serif", fontSize: "14px", fontWeight: 700, color: "#C9B87A", flexShrink: 0,
                 }}>
-                  {user.name[0]}
+                  {user.name[0].toUpperCase()}
                 </div>
                 <div>
                   <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "14px", fontWeight: 600, color: "#F5F2ED", margin: 0 }}>{user.name}</p>
@@ -429,12 +433,10 @@ export default function AdminPage() {
             </div>
 
             {/* Edit Points inline */}
-            {editPointsFor === user.name ? (
+            {editPointsFor === user.id && (
               <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
                 <input
-                  type="number"
-                  value={editPointsVal}
-                  onChange={e => setEditPointsVal(e.target.value)}
+                  type="number" value={editPointsVal} onChange={e => setEditPointsVal(e.target.value)}
                   placeholder={String(user.points)}
                   style={{ ...inputStyle, flex: 1, padding: "9px 12px", fontSize: "13px" }}
                   autoFocus
@@ -452,48 +454,32 @@ export default function AdminPage() {
                   ✕
                 </button>
               </div>
-            ) : null}
+            )}
 
             {/* Reset Streak confirmation */}
-            {resetFor === user.name ? (
+            {resetFor === user.id && (
               <div style={{
-                backgroundColor: "rgba(210,70,70,0.08)",
-                border: "1px solid rgba(210,70,70,0.2)",
-                borderRadius: "10px",
-                padding: "12px",
-                marginBottom: "8px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "10px",
+                backgroundColor: "rgba(210,70,70,0.08)", border: "1px solid rgba(210,70,70,0.2)",
+                borderRadius: "10px", padding: "12px", marginBottom: "8px",
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px",
               }}>
                 <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(210,70,70,0.85)", margin: 0 }}>
                   Reset {user.name}&apos;s streak to 0?
                 </p>
                 <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-                  <button
-                    onClick={() => { console.log(`Streak reset for ${user.name}`); setResetFor(null); }}
-                    style={{ ...outlineRedBtn, padding: "6px 10px" }}
-                  >
-                    YES
-                  </button>
-                  <button
-                    onClick={() => setResetFor(null)}
-                    style={{ ...outlineGoldBtn, padding: "6px 10px" }}
-                  >
-                    NO
-                  </button>
+                  <button onClick={() => { console.log(`Streak reset for ${user.name}`); setResetFor(null); }} style={{ ...outlineRedBtn, padding: "6px 10px" }}>YES</button>
+                  <button onClick={() => setResetFor(null)} style={{ ...outlineGoldBtn, padding: "6px 10px" }}>NO</button>
                 </div>
               </div>
-            ) : null}
+            )}
 
             {/* Action buttons */}
-            {editPointsFor !== user.name && resetFor !== user.name && (
+            {editPointsFor !== user.id && resetFor !== user.id && (
               <div style={{ display: "flex", gap: "8px" }}>
-                <button onClick={() => { setEditPointsFor(user.name); setEditPointsVal(String(user.points)); setResetFor(null); }} style={{ ...outlineGoldBtn, flex: 1 }}>
+                <button onClick={() => { setEditPointsFor(user.id); setEditPointsVal(String(user.points)); setResetFor(null); }} style={{ ...outlineGoldBtn, flex: 1 }}>
                   EDIT POINTS
                 </button>
-                <button onClick={() => { setResetFor(user.name); setEditPointsFor(null); }} style={{ ...outlineRedBtn, flex: 1 }}>
+                <button onClick={() => { setResetFor(user.id); setEditPointsFor(null); }} style={{ ...outlineRedBtn, flex: 1 }}>
                   RESET STREAK
                 </button>
               </div>
@@ -508,11 +494,11 @@ export default function AdminPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
           <CrownIcon />
           <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", fontWeight: 700, color: "#C9B87A" }}>
-            Current: {CM_CURRENT.name} · Week {CM_CURRENT.week}
+            Current: {cmCurrent} · Week {currentWeekNum}
           </span>
         </div>
         <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(212,197,169,0.45)", margin: "0 0 16px" }}>
-          Next: {CM_NEXT.name} · Week {CM_NEXT.week}
+          Next: {cmNext} · Week {currentWeekNum + 1}
         </p>
 
         {cmDone ? (
@@ -531,14 +517,11 @@ export default function AdminPage() {
                 <div>
                   <label style={labelStyle}>New Challenge Master</label>
                   <select value={newCM} onChange={e => setNewCM(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
-                    {USERS.map(u => <option key={u.name} value={u.name} style={{ backgroundColor: "#0D1829" }}>{u.name}</option>)}
+                    {users.map(u => <option key={u.id} value={u.name} style={{ backgroundColor: "#0D1829" }}>{u.name}</option>)}
                   </select>
                 </div>
                 <div style={{ display: "flex", gap: "8px" }}>
-                  <button
-                    onClick={() => { console.log("CM Override:", newCM); setCMDone(true); setShowCMForm(false); }}
-                    style={{ ...goldBtn, flex: 1 }}
-                  >
+                  <button onClick={() => { console.log("CM Override:", newCM); setCMDone(true); setShowCMForm(false); }} style={{ ...goldBtn, flex: 1 }}>
                     CONFIRM
                   </button>
                   <button onClick={() => setShowCMForm(false)} style={{ ...outlineRedBtn, flex: 1, padding: "13px" }}>
@@ -567,10 +550,7 @@ export default function AdminPage() {
             <label style={labelStyle}>Race Date</label>
             <input type="date" value={raceDate} onChange={e => { setRaceDate(e.target.value); setSettingsDone(false); }} style={inputStyle} />
           </div>
-          <button
-            onClick={() => { console.log("Settings saved:", { leagueName, seasonStart, raceDate }); setSettingsDone(true); }}
-            style={goldBtn}
-          >
+          <button onClick={() => { console.log("Settings saved:", { leagueName, seasonStart, raceDate }); setSettingsDone(true); }} style={goldBtn}>
             SAVE SETTINGS
           </button>
           {settingsDone && (
@@ -582,21 +562,8 @@ export default function AdminPage() {
       </div>
 
       {/* Danger Zone */}
-      <div style={{
-        backgroundColor: "rgba(210,70,70,0.06)",
-        border: "1px solid rgba(210,70,70,0.2)",
-        borderRadius: "16px",
-        padding: "18px",
-      }}>
-        <p style={{
-          fontFamily: "Montserrat, sans-serif",
-          fontSize: "10px",
-          fontWeight: 700,
-          color: "rgba(210,70,70,0.7)",
-          letterSpacing: "0.25em",
-          textTransform: "uppercase",
-          margin: "0 0 10px",
-        }}>
+      <div style={{ backgroundColor: "rgba(210,70,70,0.06)", border: "1px solid rgba(210,70,70,0.2)", borderRadius: "16px", padding: "18px" }}>
+        <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "10px", fontWeight: 700, color: "rgba(210,70,70,0.7)", letterSpacing: "0.25em", textTransform: "uppercase", margin: "0 0 10px" }}>
           Danger Zone
         </p>
 
@@ -610,36 +577,19 @@ export default function AdminPage() {
               This will erase all activities, points, and streaks. Type <span style={{ color: "rgba(210,70,70,0.8)", fontWeight: 700 }}>RESET</span> to confirm.
             </p>
             <input
-              type="text"
-              value={resetText}
-              onChange={e => setResetText(e.target.value)}
+              type="text" value={resetText} onChange={e => setResetText(e.target.value)}
               placeholder="Type RESET to unlock"
-              style={{
-                ...inputStyle,
-                border: "1px solid rgba(210,70,70,0.2)",
-                marginBottom: "12px",
-                color: "rgba(210,70,70,0.85)",
-              }}
+              style={{ ...inputStyle, border: "1px solid rgba(210,70,70,0.2)", marginBottom: "12px", color: "rgba(210,70,70,0.85)" }}
             />
             <button
-              onClick={() => {
-                if (resetText === "RESET") {
-                  console.log("LEAGUE RESET TRIGGERED");
-                  setResetDone(true);
-                }
-              }}
+              onClick={() => { if (resetText === "RESET") { console.log("LEAGUE RESET TRIGGERED"); setResetDone(true); } }}
               disabled={resetText !== "RESET"}
               style={{
                 width: "100%",
                 backgroundColor: resetText === "RESET" ? "rgba(210,70,70,0.85)" : "rgba(210,70,70,0.15)",
                 color: resetText === "RESET" ? "#fff" : "rgba(210,70,70,0.3)",
-                fontFamily: "Montserrat, sans-serif",
-                fontWeight: 700,
-                fontSize: "12px",
-                letterSpacing: "0.15em",
-                padding: "13px",
-                borderRadius: "12px",
-                border: "none",
+                fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "12px",
+                letterSpacing: "0.15em", padding: "13px", borderRadius: "12px", border: "none",
                 cursor: resetText === "RESET" ? "pointer" : "not-allowed",
               }}
             >
