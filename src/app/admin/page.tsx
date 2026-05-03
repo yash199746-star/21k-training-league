@@ -144,9 +144,41 @@ export default function AdminPage() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
   // Real data
-  const [users,        setUsers]        = useState<UserProfile[]>([]);
+  const [users,         setUsers]         = useState<UserProfile[]>([]);
   const [activityCount, setActivityCount] = useState<number>(0);
-  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [loadingUsers,  setLoadingUsers]  = useState(true);
+
+  async function fetchUsers(): Promise<UserProfile[]> {
+    const supabase = createClient();
+    const [
+      { data: profiles },
+      { data: allStreaks },
+      { data: allWeeklyStats },
+      { count },
+    ] = await Promise.all([
+      supabase.from("profiles").select("id, name, email").order("name"),
+      supabase.from("streaks").select("user_id, current_streak"),
+      supabase.from("weekly_stats").select("user_id, total_points"),
+      supabase.from("activities").select("id", { count: "exact", head: true }),
+    ]);
+
+    const pointsMap: Record<string, number> = {};
+    for (const s of allWeeklyStats ?? []) {
+      pointsMap[s.user_id] = (pointsMap[s.user_id] || 0) + (s.total_points || 0);
+    }
+
+    const built: UserProfile[] = (profiles ?? []).map(p => ({
+      id:     p.id,
+      name:   p.name  || "Unknown",
+      email:  p.email || "",
+      points: pointsMap[p.id] || 0,
+      streak: allStreaks?.find(s => s.user_id === p.id)?.current_streak || 0,
+    }));
+
+    setUsers(built);
+    setActivityCount(count ?? 0);
+    return built;
+  }
 
   useEffect(() => {
     async function init() {
@@ -156,34 +188,7 @@ export default function AdminPage() {
       setAllowed(isAllowed);
       if (!isAllowed) return;
 
-      const [
-        { data: profiles },
-        { data: allStreaks },
-        { data: allWeeklyStats },
-        { count },
-      ] = await Promise.all([
-        supabase.from("profiles").select("id, name, email").order("name"),
-        supabase.from("streaks").select("user_id, current_streak"),
-        supabase.from("weekly_stats").select("user_id, total_points"),
-        supabase.from("activities").select("id", { count: "exact", head: true }),
-      ]);
-
-      // Sum all-time points per user across all weeks
-      const pointsMap: Record<string, number> = {};
-      for (const s of allWeeklyStats ?? []) {
-        pointsMap[s.user_id] = (pointsMap[s.user_id] || 0) + (s.total_points || 0);
-      }
-
-      const built: UserProfile[] = (profiles ?? []).map(p => ({
-        id:     p.id,
-        name:   p.name   || "Unknown",
-        email:  p.email  || "",
-        points: pointsMap[p.id] || 0,
-        streak: allStreaks?.find(s => s.user_id === p.id)?.current_streak || 0,
-      }));
-
-      setUsers(built);
-      setActivityCount(count ?? 0);
+      const built = await fetchUsers();
       if (built.length > 0) {
         setCUser(built[0].name);
         setNewCM(built[0].name);
@@ -201,8 +206,9 @@ export default function AdminPage() {
   const [cDuration, setCDuration] = useState("");
   const [cPoints,   setCPoints]   = useState("");
   const [cReason,   setCReason]   = useState("");
-  const [cDone,     setCDone]     = useState(false);
-  const [cErrors,   setCErrors]   = useState<string[]>([]);
+  const [cDone,       setCDone]       = useState(false);
+  const [cSubmitting, setCSubmitting] = useState(false);
+  const [cErrors,     setCErrors]     = useState<string[]>([]);
 
   // User management
   const [resetFor,       setResetFor]       = useState<string | null>(null);
@@ -224,14 +230,62 @@ export default function AdminPage() {
   const [resetText, setResetText] = useState("");
   const [resetDone, setResetDone] = useState(false);
 
-  function handleCorrection() {
+  async function handleCorrection() {
     const errs: string[] = [];
     if (!cReason.trim()) errs.push("Please provide a reason for the correction.");
     if (cType === "run" && !cDistance) errs.push("Please enter a distance.");
     if (errs.length) { setCErrors(errs); return; }
     setCErrors([]);
-    console.log("Correction applied:", { user: cUser, date: cDate, type: cType, distance: cDistance, duration: cDuration, points: cPoints, reason: cReason });
+    setCSubmitting(true);
+
+    const targetUser = users.find(u => u.name === cUser);
+    if (!targetUser) { setCErrors(["User not found."]); setCSubmitting(false); return; }
+
+    const supabase = createClient();
+    const pointsVal = cPoints ? parseInt(cPoints, 10) : 0;
+    const { error } = await supabase.from("activities").insert({
+      user_id:             targetUser.id,
+      date:                cDate,
+      activity_type:       cType,
+      distance_km:         cType === "run" ? parseFloat(cDistance) || null : null,
+      duration_mins:       cDuration ? parseInt(cDuration, 10) : null,
+      activity_subtype:    `admin_correction: ${cReason.trim()}`,
+      points:              pointsVal,
+      streak_bonus:        0,
+      total_points_that_day: pointsVal,
+    });
+
+    setCSubmitting(false);
+    if (error) { setCErrors([error.message]); return; }
     setCDone(true);
+    await fetchUsers();
+  }
+
+  async function handleResetStreak(userId: string) {
+    const supabase = createClient();
+    await supabase
+      .from("streaks")
+      .update({ current_streak: 0, updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
+    setResetFor(null);
+    await fetchUsers();
+  }
+
+  async function handleSavePoints(userId: string, newPoints: number) {
+    if (isNaN(newPoints) || newPoints < 0) return;
+    const supabase = createClient();
+    await supabase.from("activities").insert({
+      user_id:               userId,
+      date:                  new Date().toISOString().split("T")[0],
+      activity_type:         "run",
+      points:                newPoints,
+      streak_bonus:          0,
+      total_points_that_day: newPoints,
+      activity_subtype:      "admin_correction",
+    });
+    setEditPointsFor(null);
+    setEditPointsVal("");
+    await fetchUsers();
   }
 
   if (allowed === null) return null;
@@ -396,7 +450,13 @@ export default function AdminPage() {
               </div>
             )}
 
-            <button onClick={handleCorrection} style={goldBtn}>APPLY CORRECTION</button>
+            <button
+              onClick={handleCorrection}
+              disabled={cSubmitting}
+              style={{ ...goldBtn, opacity: cSubmitting ? 0.6 : 1, cursor: cSubmitting ? "not-allowed" : "pointer" }}
+            >
+              {cSubmitting ? "APPLYING…" : "APPLY CORRECTION"}
+            </button>
           </div>
         )}
       </div>
@@ -442,7 +502,7 @@ export default function AdminPage() {
                   autoFocus
                 />
                 <button
-                  onClick={() => { console.log(`Points updated for ${user.name}:`, editPointsVal); setEditPointsFor(null); setEditPointsVal(""); }}
+                  onClick={() => handleSavePoints(user.id, parseFloat(editPointsVal))}
                   style={{ ...outlineGoldBtn, flexShrink: 0 }}
                 >
                   SAVE
@@ -467,7 +527,7 @@ export default function AdminPage() {
                   Reset {user.name}&apos;s streak to 0?
                 </p>
                 <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-                  <button onClick={() => { console.log(`Streak reset for ${user.name}`); setResetFor(null); }} style={{ ...outlineRedBtn, padding: "6px 10px" }}>YES</button>
+                  <button onClick={() => handleResetStreak(user.id)} style={{ ...outlineRedBtn, padding: "6px 10px" }}>YES</button>
                   <button onClick={() => setResetFor(null)} style={{ ...outlineGoldBtn, padding: "6px 10px" }}>NO</button>
                 </div>
               </div>
