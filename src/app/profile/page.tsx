@@ -525,23 +525,6 @@ export default function ProfilePage() {
             <ChevronRight />
           </button>
 
-          {p.email === "yash199746@gmail.com" && (
-          <button
-            onClick={() => router.push("/admin")}
-            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", background: "none", border: "none", borderBottom: "1px solid rgba(212,197,169,0.06)", cursor: "pointer" }}
-          >
-            <div>
-              <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "13px", fontWeight: 500, color: "#F5F2ED", display: "block" }}>
-                League Settings
-              </span>
-              <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "10px", color: "rgba(212,197,169,0.35)", letterSpacing: "0.05em" }}>
-                Admin only
-              </span>
-            </div>
-            <ChevronRight />
-          </button>
-          )}
-
           <button
             onClick={handleSignOut}
             style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", background: "none", border: "none", cursor: "pointer" }}
