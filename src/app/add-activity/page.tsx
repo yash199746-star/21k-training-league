@@ -133,6 +133,7 @@ export default function AddActivityPage() {
   const [activityUsed,     setActivityUsed]     = useState(0);
   const [restUsed,         setRestUsed]         = useState(false);
   const [currentStreak,    setCurrentStreak]    = useState(0);
+  const [lastActivityDate, setLastActivityDate] = useState<string | null>(null);
   const [loadingData,      setLoadingData]      = useState(true);
   const [submitting,       setSubmitting]       = useState(false);
   const [submitError,      setSubmitError]      = useState<string | null>(null);
@@ -186,6 +187,7 @@ export default function AddActivityPage() {
       setActivityUsed(weeklyStats?.activity_days_used || 0);
       setRestUsed((weeklyStats?.rest_day_used || 0) >= 1);
       setCurrentStreak(streakData?.current_streak || 0);
+      setLastActivityDate(streakData?.last_activity_date || null);
       setMyName(myProfile?.name || "");
       setLoadingData(false);
     }
@@ -212,11 +214,26 @@ export default function AddActivityPage() {
   }, [date, user]);
 
   const activityRemaining = ACTIVITY_LIMIT - activityUsed;
+
+  // Preview streak: what the streak will be AFTER this entry is logged
+  const dayBeforeSelected = (() => {
+    if (!date) return '';
+    const [yr, mo, dy] = date.split('-').map(Number);
+    const prev = new Date(yr, mo - 1, dy - 1);
+    return prev.getFullYear() + '-' +
+      String(prev.getMonth() + 1).padStart(2, '0') + '-' +
+      String(prev.getDate()).padStart(2, '0');
+  })();
+  const previewStreak = !lastActivityDate ? 1
+    : lastActivityDate === date ? currentStreak            // same day, no increment
+    : lastActivityDate === dayBeforeSelected ? currentStreak + 1  // consecutive day
+    : 1;                                                   // gap — streak resets
+
   const scoring = activityType ? calculatePoints(
     activityType,
     activityType === "run"      ? parseFloat(distance) || 0   : undefined,
     activityType === "activity" ? parseInt(duration, 10) || 0 : undefined,
-    currentStreak
+    previewStreak
   ) : { basePoints: 0, streakBonus: 0, totalPoints: 0, isValid: false };
   const points = scoring.totalPoints;
 
@@ -707,14 +724,14 @@ export default function AddActivityPage() {
                       ? `This run will earn ${points} pt${points !== 1 ? "s" : ""}`
                       : "Enter distance to see points preview"}
                   </p>
-                  {currentStreak > 0 && scoring.streakBonus > 0 && (
+                  {previewStreak > 0 && scoring.streakBonus > 0 && (
                     <p style={{
                       fontFamily: "Montserrat, sans-serif",
                       fontSize: "11px",
                       color: "rgba(212,197,169,0.5)",
                       margin: "5px 0 0",
                     }}>
-                      +{scoring.streakBonus} streak bonus · {currentStreak}-day streak
+                      +{scoring.streakBonus} streak bonus · {previewStreak}-day streak
                     </p>
                   )}
                 </div>
@@ -797,14 +814,14 @@ export default function AddActivityPage() {
                   }}>
                     30+ minutes earns 2 base points
                   </p>
-                  {currentStreak > 0 && (
+                  {previewStreak > 0 && (
                     <p style={{
                       fontFamily: "Montserrat, sans-serif",
                       fontSize: "11px",
                       color: "rgba(212,197,169,0.45)",
                       margin: "5px 0 0",
                     }}>
-                      +{Math.min(currentStreak, 7)} streak bonus · {currentStreak}-day streak
+                      +{Math.min(previewStreak, 7)} streak bonus · {previewStreak}-day streak
                     </p>
                   )}
                 </div>
