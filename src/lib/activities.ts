@@ -27,15 +27,39 @@ export async function logActivity({
 
   const currentStreak = streakData?.current_streak || 0
 
-  // Calculate points
+  // ── Step 1: Calculate new streak relative to the ACTIVITY DATE ──────────────
+  // Using local-date arithmetic to avoid UTC off-by-one in non-UTC timezones
+  const [yr, mo, dy] = date.split('-').map(Number)
+  const prevDate = new Date(yr, mo - 1, dy - 1)
+  const dayBeforeStr = prevDate.getFullYear() + '-' +
+    String(prevDate.getMonth() + 1).padStart(2, '0') + '-' +
+    String(prevDate.getDate()).padStart(2, '0')
+
+  const lastActivity = streakData?.last_activity_date
+  let newStreak: number
+
+  if (!lastActivity) {
+    newStreak = 1
+  } else if (lastActivity === date) {
+    // Same day re-log — keep streak
+    newStreak = currentStreak
+  } else if (lastActivity === dayBeforeStr) {
+    // Consecutive day — increment
+    newStreak = currentStreak + 1
+  } else {
+    // Gap — reset
+    newStreak = 1
+  }
+
+  // ── Step 2: Calculate points using NEW streak ────────────────────────────────
   const { basePoints, streakBonus, totalPoints } = calculatePoints(
     activityType,
     distanceKm,
     durationMins,
-    currentStreak
+    newStreak
   )
 
-  // Check weekly limits
+  // ── Step 3: Check weekly limits ──────────────────────────────────────────────
   const weekStart = getWeekStart(new Date(date))
   const { data: weeklyStats } = await supabase
     .from('weekly_stats')
@@ -44,7 +68,6 @@ export async function logActivity({
     .eq('week_start', weekStart)
     .single()
 
-  // Enforce weekly limits
   if (activityType === 'activity' && (weeklyStats?.activity_days_used || 0) >= 2) {
     return { success: false, error: 'Maximum 2 activity days per week reached' }
   }
@@ -52,7 +75,7 @@ export async function logActivity({
     return { success: false, error: 'Rest day already used this week' }
   }
 
-  // Insert activity
+  // ── Step 4: Insert activity with correct points ──────────────────────────────
   const { error: activityError } = await supabase
     .from('activities')
     .insert({
@@ -69,7 +92,7 @@ export async function logActivity({
 
   if (activityError) return { success: false, error: activityError.message }
 
-  // Update weekly stats
+  // ── Step 5: Update weekly stats ──────────────────────────────────────────────
   const { error: weeklyError } = await supabase
     .from('weekly_stats')
     .upsert({
@@ -84,25 +107,7 @@ export async function logActivity({
 
   if (weeklyError) return { success: false, error: weeklyError.message }
 
-  // Update streak — 48h buffer: streak continues if last activity was today, yesterday, or 2 days ago
-  const todayDate = new Date()
-  todayDate.setHours(0, 0, 0, 0)
-  const todayStr = todayDate.toISOString().split('T')[0]
-  const yesterdayDate = new Date(todayDate)
-  yesterdayDate.setDate(yesterdayDate.getDate() - 1)
-  const yesterdayStr = yesterdayDate.toISOString().split('T')[0]
-  const twoDaysAgoDate = new Date(todayDate)
-  twoDaysAgoDate.setDate(twoDaysAgoDate.getDate() - 2)
-  const twoDaysAgoStr = twoDaysAgoDate.toISOString().split('T')[0]
-
-  const lastActivityDate = streakData?.last_activity_date
-  let newStreak = 1
-  if (lastActivityDate === todayStr) {
-    newStreak = currentStreak
-  } else if (lastActivityDate === yesterdayStr || lastActivityDate === twoDaysAgoStr) {
-    newStreak = currentStreak + 1
-  }
-
+  // ── Step 6: Update streak row ────────────────────────────────────────────────
   const newLongest = Math.max(newStreak, streakData?.longest_streak || 0)
 
   await supabase
