@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
 
   const user = session.user
   const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || null
-  const name = user.user_metadata?.full_name || user.user_metadata?.name ||
-    user.email?.split('@')[0] || 'User'
+  const fullName = user.user_metadata?.full_name || user.user_metadata?.name || ''
+  const firstName = fullName.split(' ')[0] || user.email?.split('@')[0] || 'User'
 
   const { data: existingProfile } = await supabase
     .from('profiles')
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
   } else {
     await supabase
       .from('profiles')
-      .insert({ id: user.id, email: user.email, name, avatar_url: avatarUrl })
+      .insert({ id: user.id, email: user.email, name: firstName, avatar_url: avatarUrl })
   }
 
   return NextResponse.redirect(new URL('/splash', request.url))
