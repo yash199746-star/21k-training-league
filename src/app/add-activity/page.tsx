@@ -589,6 +589,7 @@ export default function AddActivityPage() {
                   <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
                     <input
                       type="number"
+                      inputMode="decimal"
                       value={distance}
                       onChange={e => setDistance(e.target.value)}
                       placeholder="0.0"
@@ -633,10 +634,12 @@ export default function AddActivityPage() {
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "5px" }}>
                       <input
                         type="number"
+                        inputMode="numeric"
                         value={durationMins}
                         onChange={e => setDurationMins(e.target.value)}
                         placeholder="00"
                         min="0"
+                        step="1"
                         style={mmssInputStyle}
                       />
                       <span style={{
@@ -659,11 +662,13 @@ export default function AddActivityPage() {
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "5px" }}>
                       <input
                         type="number"
+                        inputMode="numeric"
                         value={durationSecs}
                         onChange={e => setDurationSecs(e.target.value)}
                         placeholder="00"
                         min="0"
                         max="59"
+                        step="1"
                         style={mmssInputStyle}
                       />
                       <span style={{
@@ -756,10 +761,12 @@ export default function AddActivityPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <input
                       type="number"
+                      inputMode="numeric"
                       value={duration}
                       onChange={e => setDuration(e.target.value)}
                       placeholder="0"
                       min="0"
+                      step="1"
                       style={durationInputStyle}
                     />
                     <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "13px", color: "rgba(212,197,169,0.5)" }}>

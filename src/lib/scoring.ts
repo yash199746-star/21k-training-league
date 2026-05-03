@@ -16,7 +16,7 @@ export function calculatePoints(
       reason = 'Minimum 2km required for points'
       return { basePoints: 0, streakBonus: 0, totalPoints: 0, isValid, reason }
     }
-    basePoints = distanceKm
+    basePoints = Math.round(distanceKm)
   } else if (activityType === 'activity') {
     if (!durationMins || durationMins < 30) {
       isValid = false
