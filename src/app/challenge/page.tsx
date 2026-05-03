@@ -146,6 +146,13 @@ interface PastChallengeData {
   total:       number;
 }
 
+interface UpcomingChallengeData {
+  id:          string;
+  title:       string;
+  description: string;
+  week_start:  string;
+}
+
 // ── Icons ──────────────────────────────────────────────────────────────────
 function CrownIcon() {
   return (
@@ -270,6 +277,7 @@ export default function ChallengePage() {
   const [currentWeekNum, setCurrentWeekNum] = useState(1);
   const [challenge,     setChallenge]     = useState<ChallengeData | null>(null);
   const [participants,  setParticipants]  = useState<ParticipantData[]>([]);
+  const [upcoming,      setUpcoming]      = useState<UpcomingChallengeData | null>(null);
   const [pastList,      setPastList]      = useState<PastChallengeData[]>([]);
 
   // Form state
@@ -317,7 +325,7 @@ export default function ChallengePage() {
         { data: weekActs },
         { data: streakRow },
         { data: activeChallenges },
-        { data: pastChallenges },
+        { data: allInactiveChallenges },
       ] = await Promise.all([
         supabase.from("profiles").select("name").eq("id", user.id).single(),
         supabase.from("profiles").select("id, name, avatar_url"),
@@ -328,10 +336,10 @@ export default function ChallengePage() {
         supabase.from("streaks").select("current_streak").eq("user_id", user.id).single(),
         supabase.from("challenges").select("*").eq("is_active", true),
         supabase.from("challenges")
-          .select("id, title, week_start")
+          .select("id, title, description, week_start")
           .eq("is_active", false)
           .order("week_start", { ascending: false })
-          .limit(3),
+          .limit(10),
       ]);
 
       const myName = myProfile?.name || "";
@@ -403,19 +411,25 @@ export default function ChallengePage() {
         setParticipants(parts);
       }
 
-      // ── Past challenges ────────────────────────────────────────────────
-      if (pastChallenges && pastChallenges.length > 0) {
-        const pastIds = pastChallenges.map(c => c.id);
+      // ── Inactive challenges: split into upcoming vs past ──────────────────
+      const inactive = allInactiveChallenges ?? [];
+      const upcomingCh = inactive.find(c => c.week_start > weekStart) ?? null;
+      const pastChs = inactive.filter(c => c.week_start < weekStart).slice(0, 3);
+
+      if (upcomingCh) setUpcoming({ id: upcomingCh.id, title: upcomingCh.title, description: upcomingCh.description, week_start: upcomingCh.week_start });
+
+      if (pastChs.length > 0) {
+        const pastIds = pastChs.map(c => c.id);
         const { data: pastProgress } = await supabase
           .from("challenge_progress")
-          .select("challenge_id, completed")
+          .select("challenge_id, is_completed")
           .in("challenge_id", pastIds);
 
         const totalUsers = (allProfiles ?? []).length;
-        setPastList(pastChallenges.map(c => ({
+        setPastList(pastChs.map(c => ({
           weekNum:     weekStartToNumber(c.week_start),
           title:       c.title,
-          completedOf: (pastProgress ?? []).filter(p => p.challenge_id === c.id && p.completed).length,
+          completedOf: (pastProgress ?? []).filter(p => p.challenge_id === c.id && p.is_completed).length,
           total:       totalUsers,
         })));
       }
@@ -691,7 +705,32 @@ export default function ChallengePage() {
           </div>
         )}
 
-        {/* ── Section 4: Past Challenges ── */}
+        {/* ── Section 4: Upcoming Challenge ── */}
+        {upcoming && (
+          <div style={{ marginBottom: "28px" }}>
+            <p style={sectionTitle}>Upcoming Challenge</p>
+            <div style={{
+              backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+              border: "1px solid rgba(201,184,122,0.2)",
+              borderRadius: "16px", padding: "18px",
+            }}>
+              <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "10px", fontWeight: 700, color: "#C9B87A", letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 6px" }}>
+                Week {currentWeekNum + 1} Challenge
+              </p>
+              <h3 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "20px", fontWeight: 700, color: "#F5F2ED", margin: "0 0 8px" }}>
+                {upcoming.title}
+              </h3>
+              <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "13px", color: "rgba(212,197,169,0.65)", margin: "0 0 10px", lineHeight: 1.5 }}>
+                {upcoming.description}
+              </p>
+              <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "11px", color: "rgba(212,197,169,0.4)", margin: 0 }}>
+                Goes live Monday 12:00 AM
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Section 5: Past Challenges ── */}
         <p style={sectionTitle}>Past Challenges</p>
         {pastList.length === 0 ? (
           <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(212,197,169,0.35)", textAlign: "center", padding: "16px 0" }}>
