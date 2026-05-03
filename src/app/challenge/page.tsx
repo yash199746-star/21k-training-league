@@ -684,36 +684,9 @@ export default function ChallengePage() {
                   You are Challenge Master for Week {currentWeekNum}
                 </span>
               </div>
-              <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(212,197,169,0.5)", margin: "0 0 16px" }}>
-                Submit next week&apos;s challenge before Sunday 11:59 PM
+              <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(212,197,169,0.5)", margin: 0 }}>
+                Lead this week&apos;s challenge and keep the group motivated.
               </p>
-
-              {!formSubmitted ? (
-                <button
-                  onClick={() => setShowForm(v => !v)}
-                  style={{
-                    width: "100%",
-                    backgroundColor: showForm ? "rgba(201,184,122,0.12)" : "#C9B87A",
-                    color: showForm ? "#C9B87A" : "#0D1829",
-                    fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "12px",
-                    letterSpacing: "0.15em", padding: "14px", borderRadius: "12px",
-                    border: showForm ? "1px solid rgba(201,184,122,0.3)" : "none", cursor: "pointer",
-                  }}
-                >
-                  {showForm ? "CANCEL" : "CREATE NEXT CHALLENGE"}
-                </button>
-              ) : (
-                <div style={{
-                  display: "flex", alignItems: "center", gap: "8px",
-                  backgroundColor: "rgba(74,124,89,0.1)", border: "1px solid rgba(74,124,89,0.3)",
-                  borderRadius: "12px", padding: "12px 14px",
-                }}>
-                  <CheckIcon />
-                  <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", fontWeight: 600, color: "#4A7C59" }}>
-                    Challenge submitted for Week {nextWeekNum}
-                  </span>
-                </div>
-              )}
             </div>
           </div>
         )}
