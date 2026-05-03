@@ -14,7 +14,7 @@ const LEAGUE_START_MS = new Date(Date.UTC(2026, 4, 4)).getTime(); // Monday May 
 
 function getChallengeMasterName(): string {
   const weekStart = new Date(getWeekStart(new Date())).getTime();
-  const wk = Math.floor((weekStart - LEAGUE_START_MS) / (7 * 24 * 60 * 60 * 1000));
+  const wk = Math.max(0, Math.floor((weekStart - LEAGUE_START_MS) / (7 * 24 * 60 * 60 * 1000)));
   return CM_ORDER[((wk % 3) + 3) % 3];
 }
 function getCurrentWeekNumber(): number {

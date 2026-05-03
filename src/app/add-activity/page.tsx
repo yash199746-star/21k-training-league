@@ -26,7 +26,7 @@ function getChallengeMasterForWeek(weekOffset: number): string {
   monday.setUTCDate(monday.getUTCDate() + diff);
   const targetMonday = new Date(monday);
   targetMonday.setUTCDate(targetMonday.getUTCDate() + (weekOffset * 7));
-  const weekNum = Math.floor((targetMonday.getTime() - LEAGUE_START.getTime()) / (7 * 24 * 60 * 60 * 1000));
+  const weekNum = Math.max(0, Math.floor((targetMonday.getTime() - LEAGUE_START.getTime()) / (7 * 24 * 60 * 60 * 1000)));
   return CM_ORDER[((weekNum % 3) + 3) % 3];
 }
 

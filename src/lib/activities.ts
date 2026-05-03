@@ -28,26 +28,21 @@ export async function logActivity({
   const currentStreak = streakData?.current_streak || 0
 
   // ── Step 1: Calculate new streak relative to the ACTIVITY DATE ──────────────
-  // Using local-date arithmetic to avoid UTC off-by-one in non-UTC timezones
-  const [yr, mo, dy] = date.split('-').map(Number)
-  const prevDate = new Date(yr, mo - 1, dy - 1)
-  const dayBeforeStr = prevDate.getFullYear() + '-' +
-    String(prevDate.getMonth() + 1).padStart(2, '0') + '-' +
-    String(prevDate.getDate()).padStart(2, '0')
-
+  const activityDate = new Date(date)
+  activityDate.setHours(0, 0, 0, 0)
+  const dayBefore = new Date(activityDate)
+  dayBefore.setDate(activityDate.getDate() - 1)
+  const dayBeforeStr = dayBefore.toISOString().split('T')[0]
   const lastActivity = streakData?.last_activity_date
-  let newStreak: number
 
+  let newStreak = 1
   if (!lastActivity) {
     newStreak = 1
   } else if (lastActivity === date) {
-    // Same day re-log — keep streak
     newStreak = currentStreak
   } else if (lastActivity === dayBeforeStr) {
-    // Consecutive day — increment
     newStreak = currentStreak + 1
   } else {
-    // Gap — reset
     newStreak = 1
   }
 
@@ -56,7 +51,7 @@ export async function logActivity({
     activityType,
     distanceKm,
     durationMins,
-    newStreak
+    newStreak  // streakBonus = Math.min(newStreak, 7) for valid activities
   )
 
   // ── Step 3: Check weekly limits ──────────────────────────────────────────────
