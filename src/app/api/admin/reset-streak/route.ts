@@ -7,10 +7,12 @@ export async function POST(request: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
   const { userId } = await request.json()
+  console.log('Reset streak for userId:', userId)
   const { error } = await supabaseAdmin
     .from('streaks')
     .update({ current_streak: 0, updated_at: new Date().toISOString() })
     .eq('user_id', userId)
+  console.log('Reset streak error:', error)
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   return NextResponse.json({ success: true })
 }

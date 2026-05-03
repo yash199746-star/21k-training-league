@@ -192,9 +192,9 @@ export default function AddActivityPage() {
     loadData();
   }, [router]);
 
-  // Check if user already has an activity for the selected date
+  // Check if user already has any activity for the selected date (all types)
   useEffect(() => {
-    if (!user) return;
+    if (!user || !date) return;
     const supabase = createClient();
     supabase
       .from("activities")
@@ -202,7 +202,13 @@ export default function AddActivityPage() {
       .eq("user_id", user.id)
       .eq("date", date)
       .limit(1)
-      .then(({ data }) => setDateAlreadyLogged((data?.length || 0) > 0));
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setDateAlreadyLogged(true);
+        } else {
+          setDateAlreadyLogged(false);
+        }
+      });
   }, [date, user]);
 
   const activityRemaining = ACTIVITY_LIMIT - activityUsed;
@@ -493,23 +499,28 @@ export default function AddActivityPage() {
           </p>
           <div style={{ display: "flex", gap: "10px" }}>
             {TYPE_CARDS.map(({ type, label, Icon }) => {
-              const active = activityType === type;
+              const active   = activityType === type;
+              const cardDisabled = type === "rest" && restUsed;
               return (
                 <button
                   key={type}
-                  onClick={() => { setActivityType(type); setErrors([]); setSubmitError(null); }}
+                  onClick={() => {
+                    if (cardDisabled) return;
+                    setActivityType(type); setErrors([]); setSubmitError(null);
+                  }}
                   style={{
                     flex: 1,
                     padding: "18px 8px",
                     borderRadius: "14px",
                     border: active ? "1.5px solid #C9B87A" : "1px solid rgba(212,197,169,0.1)",
                     backgroundColor: active ? "rgba(201,184,122,0.1)" : "rgba(13,24,41,0.4)",
-                    cursor: "pointer",
+                    cursor: cardDisabled ? "not-allowed" : "pointer",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
                     gap: "10px",
                     boxShadow: active ? "0 0 0 1px rgba(201,184,122,0.08)" : "none",
+                    opacity: cardDisabled ? 0.4 : 1,
                   }}
                 >
                   <Icon active={active} />
