@@ -491,8 +491,10 @@ export default function ChallengePage() {
   const nextWeekNum = currentWeekNum + 1;
   const nextWeekCM = getChallengeMasterForWeek(1);
   const isThursdayToSunday = [0, 4, 5, 6].includes(new Date().getUTCDay());
-  const bannerCondition = isThursdayToSunday && myName.trim().toLowerCase() === nextWeekCM.trim().toLowerCase();
-  console.log("[CM Banner Debug] nextWeekCM:", nextWeekCM, "| myName:", myName, "| isThurSun:", isThursdayToSunday, "| show:", bannerCondition);
+  const leagueStarted = new Date() >= LEAGUE_START;
+  const bannerCondition = isThursdayToSunday && leagueStarted && myName.trim().toLowerCase() === nextWeekCM.trim().toLowerCase();
+  console.log("[CM Banner Debug] nextWeekCM:", nextWeekCM, "| myName:", myName, "| isThurSun:", isThursdayToSunday, "| leagueStarted:", leagueStarted, "| show:", bannerCondition);
+  console.log("[CM Week Debug] week0:", getChallengeMasterForWeek(0), "week1:", getChallengeMasterForWeek(1), "weeksSinceStart:", Math.max(0, Math.floor((new Date().getTime() - LEAGUE_START.getTime()) / (7 * 24 * 60 * 60 * 1000))));
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
