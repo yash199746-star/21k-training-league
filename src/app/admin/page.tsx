@@ -194,6 +194,18 @@ export default function AdminPage() {
         setNewCM(built[0].name);
       }
       setLoadingUsers(false);
+
+      // Load league settings
+      const { data: settings } = await supabase
+        .from("league_settings")
+        .select("league_name, race_date, season_start_date")
+        .eq("id", 1)
+        .single();
+      if (settings) {
+        if (settings.league_name)       setLeagueName(settings.league_name);
+        if (settings.season_start_date) setSeasonStart(settings.season_start_date);
+        if (settings.race_date)         setRaceDate(settings.race_date);
+      }
     }
     init();
   }, []);
@@ -224,11 +236,13 @@ export default function AdminPage() {
   const [raceDate,      setRaceDate]      = useState("2026-09-13");
   const [leagueName,    setLeagueName]    = useState("21K Training League");
   const [seasonStart,   setSeasonStart]   = useState("2026-04-06");
-  const [settingsDone,  setSettingsDone]  = useState(false);
+  const [settingsDone,    setSettingsDone]    = useState(false);
+  const [settingsSaving,  setSettingsSaving]  = useState(false);
 
   // Danger zone
-  const [resetText, setResetText] = useState("");
-  const [resetDone, setResetDone] = useState(false);
+  const [resetText,    setResetText]    = useState("");
+  const [resetDone,    setResetDone]    = useState(false);
+  const [resetRunning, setResetRunning] = useState(false);
 
   async function handleCorrection() {
     const errs: string[] = [];
@@ -241,51 +255,73 @@ export default function AdminPage() {
     const targetUser = users.find(u => u.name === cUser);
     if (!targetUser) { setCErrors(["User not found."]); setCSubmitting(false); return; }
 
-    const supabase = createClient();
     const pointsVal = cPoints ? parseInt(cPoints, 10) : 0;
-    const { error } = await supabase.from("activities").insert({
-      user_id:             targetUser.id,
-      date:                cDate,
-      activity_type:       cType,
-      distance_km:         cType === "run" ? parseFloat(cDistance) || null : null,
-      duration_mins:       cDuration ? parseInt(cDuration, 10) : null,
-      activity_subtype:    `admin_correction: ${cReason.trim()}`,
-      points:              pointsVal,
-      streak_bonus:        0,
-      total_points_that_day: pointsVal,
+    const res = await fetch("/api/admin/correct-activity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId:       targetUser.id,
+        date:         cDate,
+        activityType: cType,
+        distanceKm:   cType === "run" ? parseFloat(cDistance) || null : null,
+        durationMins: cDuration ? parseInt(cDuration, 10) : null,
+        points:       pointsVal,
+        reason:       cReason.trim(),
+      }),
     });
-
+    const json = await res.json();
     setCSubmitting(false);
-    if (error) { setCErrors([error.message]); return; }
+    if (!res.ok) { setCErrors([json.error ?? "Failed to apply correction."]); return; }
     setCDone(true);
     await fetchUsers();
   }
 
   async function handleResetStreak(userId: string) {
-    const supabase = createClient();
-    await supabase
-      .from("streaks")
-      .update({ current_streak: 0, updated_at: new Date().toISOString() })
-      .eq("user_id", userId);
-    setResetFor(null);
-    await fetchUsers();
+    const res = await fetch("/api/admin/reset-streak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    });
+    if (res.ok) {
+      setResetFor(null);
+      await fetchUsers();
+    }
   }
 
   async function handleSavePoints(userId: string, newPoints: number) {
     if (isNaN(newPoints) || newPoints < 0) return;
-    const supabase = createClient();
-    await supabase.from("activities").insert({
-      user_id:               userId,
-      date:                  new Date().toISOString().split("T")[0],
-      activity_type:         "run",
-      points:                newPoints,
-      streak_bonus:          0,
-      total_points_that_day: newPoints,
-      activity_subtype:      "admin_correction",
+    const res = await fetch("/api/admin/update-points", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, points: newPoints }),
     });
-    setEditPointsFor(null);
-    setEditPointsVal("");
-    await fetchUsers();
+    if (res.ok) {
+      setEditPointsFor(null);
+      setEditPointsVal("");
+      await fetchUsers();
+    }
+  }
+
+  async function handleSaveSettings() {
+    setSettingsSaving(true);
+    const res = await fetch("/api/admin/save-settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leagueName, raceDate, seasonStartDate: seasonStart }),
+    });
+    setSettingsSaving(false);
+    if (res.ok) setSettingsDone(true);
+  }
+
+  async function handleResetLeague() {
+    setResetRunning(true);
+    const res = await fetch("/api/admin/reset-league", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirm: "RESET" }),
+    });
+    setResetRunning(false);
+    if (res.ok) setResetDone(true);
   }
 
   if (allowed === null) return null;
@@ -610,8 +646,12 @@ export default function AdminPage() {
             <label style={labelStyle}>Race Date</label>
             <input type="date" value={raceDate} onChange={e => { setRaceDate(e.target.value); setSettingsDone(false); }} style={inputStyle} />
           </div>
-          <button onClick={() => { console.log("Settings saved:", { leagueName, seasonStart, raceDate }); setSettingsDone(true); }} style={goldBtn}>
-            SAVE SETTINGS
+          <button
+            onClick={handleSaveSettings}
+            disabled={settingsSaving}
+            style={{ ...goldBtn, opacity: settingsSaving ? 0.6 : 1, cursor: settingsSaving ? "not-allowed" : "pointer" }}
+          >
+            {settingsSaving ? "SAVING…" : "SAVE SETTINGS"}
           </button>
           {settingsDone && (
             <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", fontWeight: 600, color: "#4A7C59", textAlign: "center", margin: 0 }}>
@@ -642,18 +682,19 @@ export default function AdminPage() {
               style={{ ...inputStyle, border: "1px solid rgba(210,70,70,0.2)", marginBottom: "12px", color: "rgba(210,70,70,0.85)" }}
             />
             <button
-              onClick={() => { if (resetText === "RESET") { console.log("LEAGUE RESET TRIGGERED"); setResetDone(true); } }}
-              disabled={resetText !== "RESET"}
+              onClick={handleResetLeague}
+              disabled={resetText !== "RESET" || resetRunning}
               style={{
                 width: "100%",
                 backgroundColor: resetText === "RESET" ? "rgba(210,70,70,0.85)" : "rgba(210,70,70,0.15)",
                 color: resetText === "RESET" ? "#fff" : "rgba(210,70,70,0.3)",
                 fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "12px",
                 letterSpacing: "0.15em", padding: "13px", borderRadius: "12px", border: "none",
-                cursor: resetText === "RESET" ? "pointer" : "not-allowed",
+                cursor: resetText === "RESET" && !resetRunning ? "pointer" : "not-allowed",
+                opacity: resetRunning ? 0.6 : 1,
               }}
             >
-              RESET ENTIRE LEAGUE
+              {resetRunning ? "RESETTING…" : "RESET ENTIRE LEAGUE"}
             </button>
           </>
         )}
