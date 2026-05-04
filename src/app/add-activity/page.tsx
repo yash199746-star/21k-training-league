@@ -200,16 +200,16 @@ export default function AddActivityPage() {
     const supabase = createClient();
     supabase
       .from("activities")
-      .select("id")
+      .select("id, activity_subtype")
       .eq("user_id", user.id)
       .eq("date", date)
-      .limit(1)
+      .limit(10)
       .then(({ data }) => {
-        if (data && data.length > 0) {
-          setDateAlreadyLogged(true);
-        } else {
-          setDateAlreadyLogged(false);
-        }
+        const realActivities = (data ?? []).filter((a: { activity_subtype?: string | null }) =>
+          a.activity_subtype !== 'challenge_completion_bonus' &&
+          !a.activity_subtype?.startsWith('cm_bonus_')
+        );
+        setDateAlreadyLogged(realActivities.length > 0);
       });
   }, [date, user]);
 
