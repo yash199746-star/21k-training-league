@@ -208,12 +208,18 @@ export async function logActivity({
     }, { onConflict: 'user_id' })
 
   // Update challenge_progress for the active challenge this week
-  const { data: activeChallenge } = await supabase
+  // eslint-disable-next-line no-console
+  console.log('[Challenge Progress Debug] date:', date, 'weekStart:', weekStart, 'userId:', userId)
+
+  const { data: activeChallenge, error: challengeError } = await supabase
     .from('challenges')
     .select('*')
     .eq('is_active', true)
     .eq('week_start', weekStart)
     .maybeSingle()
+
+  // eslint-disable-next-line no-console
+  console.log('[Challenge Progress Debug] activeChallenge:', activeChallenge?.id ?? null, 'challenge_type:', activeChallenge?.challenge_type ?? null, 'challengeError:', challengeError?.message ?? null)
 
   if (activeChallenge) {
     // Check previous completion to guard one-time bonus award
@@ -229,47 +235,60 @@ export async function logActivity({
     let progressValue = 0
 
     if (activeChallenge.challenge_type === 'number_of_runs') {
-      const { data: runs } = await supabase
+      const { data: runs, error: runsError } = await supabase
         .from('activities')
         .select('id')
         .eq('user_id', userId)
         .eq('activity_type', 'run')
         .neq('activity_subtype', 'challenge_completion_bonus')
         .gte('date', weekStart)
+      // eslint-disable-next-line no-console
+      console.log('[Challenge Progress Debug] number_of_runs — weekStart:', weekStart, 'runs found:', runs?.length ?? 0, 'runsError:', runsError?.message ?? null)
       progressValue = runs?.length || 0
     } else if (activeChallenge.challenge_type === 'total_distance') {
-      const { data: runs } = await supabase
+      const { data: runs, error: runsError } = await supabase
         .from('activities')
         .select('distance_km')
         .eq('user_id', userId)
         .eq('activity_type', 'run')
         .neq('activity_subtype', 'challenge_completion_bonus')
         .gte('date', weekStart)
+      // eslint-disable-next-line no-console
+      console.log('[Challenge Progress Debug] total_distance — weekStart:', weekStart, 'runs found:', runs?.length ?? 0, 'runsError:', runsError?.message ?? null)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       progressValue = runs?.reduce((sum: number, r: any) => sum + (r.distance_km || 0), 0) || 0
     } else if (activeChallenge.challenge_type === 'single_run_distance') {
-      const { data: runs } = await supabase
+      const { data: runs, error: runsError } = await supabase
         .from('activities')
         .select('distance_km')
         .eq('user_id', userId)
         .eq('activity_type', 'run')
         .neq('activity_subtype', 'challenge_completion_bonus')
         .gte('date', weekStart)
+      // eslint-disable-next-line no-console
+      console.log('[Challenge Progress Debug] single_run_distance — weekStart:', weekStart, 'runs found:', runs?.length ?? 0, 'runsError:', runsError?.message ?? null)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       progressValue = Math.max(...(runs?.map((r: any) => r.distance_km || 0) || [0]))
     } else if (activeChallenge.challenge_type === 'activity_streak') {
+      // eslint-disable-next-line no-console
+      console.log('[Challenge Progress Debug] activity_streak — currentStreak:', currentStreak)
       progressValue = currentStreak
     } else if (activeChallenge.challenge_type === 'activity_type') {
-      const { data: activities } = await supabase
+      const { data: activities, error: actsError } = await supabase
         .from('activities')
         .select('id')
         .eq('user_id', userId)
         .eq('activity_subtype', activeChallenge.target_activity_type)
         .gte('date', weekStart)
+      // eslint-disable-next-line no-console
+      console.log('[Challenge Progress Debug] activity_type — target_subtype:', activeChallenge.target_activity_type, 'weekStart:', weekStart, 'activities found:', activities?.length ?? 0, 'actsError:', actsError?.message ?? null)
       progressValue = activities?.length || 0
     }
 
     const isCompleted = progressValue >= activeChallenge.target_value
+
+    // eslint-disable-next-line no-console
+    console.log('[Challenge Progress Debug] upserting — progressValue:', progressValue, 'target:', activeChallenge.target_value, 'isCompleted:', isCompleted)
 
     await supabase
       .from('challenge_progress')
