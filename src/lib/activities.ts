@@ -209,7 +209,7 @@ export async function logActivity({
 
   // Update challenge_progress for the active challenge this week
   // eslint-disable-next-line no-console
-  console.log('[Challenge Progress Debug] date:', date, 'weekStart:', weekStart, 'userId:', userId)
+  console.log('[Challenge Debug] querying challenge with weekStart:', weekStart, 'type:', typeof weekStart)
 
   const { data: activeChallenge, error: challengeError } = await supabase
     .from('challenges')
@@ -219,7 +219,7 @@ export async function logActivity({
     .maybeSingle()
 
   // eslint-disable-next-line no-console
-  console.log('[Challenge Progress Debug] activeChallenge:', activeChallenge?.id ?? null, 'challenge_type:', activeChallenge?.challenge_type ?? null, 'challengeError:', challengeError?.message ?? null)
+  console.log('[Challenge Debug] result:', activeChallenge, 'error:', challengeError)
 
   if (activeChallenge) {
     // Check previous completion to guard one-time bonus award
