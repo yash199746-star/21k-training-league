@@ -5,7 +5,7 @@ import { calculatePoints, getWeekStart } from '@/lib/scoring'
 async function recalculateStreak(supabase: any, userId: string) {
   const { data: allActivities } = await supabase
     .from('activities')
-    .select('id, date, activity_type, points')
+    .select('id, date, activity_type, activity_subtype, points')
     .eq('user_id', userId)
     .order('date', { ascending: true })
 
@@ -33,9 +33,12 @@ async function recalculateStreak(supabase: any, userId: string) {
     dateStreakMap[uniqueDates[i]] = streakCount
   }
 
-  // Update ALL activity rows with correct streak bonus and total points
+  // Update ALL activity rows with correct streak bonus and total points.
+  // Skip challenge_completion_bonus rows — their points are fixed and must not be inflated.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const activity of allActivities) {
+    if (activity.activity_subtype === 'challenge_completion_bonus') continue
+
     const streakPosition = dateStreakMap[activity.date] || 1
     const streakBonus = Math.min(streakPosition, 7)
     const totalPoints = (activity.points || 0) + streakBonus
@@ -60,7 +63,7 @@ async function recalculateStreak(supabase: any, userId: string) {
 
       const { data: weekActivities } = await supabase
         .from('activities')
-        .select('total_points_that_day, distance_km, activity_type')
+        .select('total_points_that_day, distance_km, activity_type, activity_subtype')
         .eq('user_id', userId)
         .gte('date', week.week_start)
         .lt('date', weekEnd)
@@ -69,7 +72,9 @@ async function recalculateStreak(supabase: any, userId: string) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const totalPoints = weekActivities.reduce((sum: number, a: any) => sum + (a.total_points_that_day || 0), 0)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const totalKm = weekActivities.filter((a: any) => a.activity_type === 'run')
+        const totalKm = weekActivities
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .filter((a: any) => a.activity_type === 'run' && a.activity_subtype !== 'challenge_completion_bonus')
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .reduce((sum: number, a: any) => sum + (a.distance_km || 0), 0)
 
@@ -82,13 +87,16 @@ async function recalculateStreak(supabase: any, userId: string) {
     }
   }
 
-  // Determine current streak (only active if last activity was today or yesterday)
+  // Use local date strings to match activity date format (avoids UTC-offset mismatch on IST)
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const todayStr = today.toISOString().split('T')[0]
+  const todayStr = today.getFullYear() + '-' +
+    String(today.getMonth() + 1).padStart(2, '0') + '-' +
+    String(today.getDate()).padStart(2, '0')
   const yesterday = new Date(today)
   yesterday.setDate(today.getDate() - 1)
-  const yesterdayStr = yesterday.toISOString().split('T')[0]
+  const yesterdayStr = yesterday.getFullYear() + '-' +
+    String(yesterday.getMonth() + 1).padStart(2, '0') + '-' +
+    String(yesterday.getDate()).padStart(2, '0')
 
   const lastDate = uniqueDates[uniqueDates.length - 1]
   const currentStreak = (lastDate === todayStr || lastDate === yesterdayStr)
@@ -184,6 +192,110 @@ export async function logActivity({
       last_activity_date: lastActivityDate,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' })
+
+  // Update challenge_progress for the active challenge this week
+  const { data: activeChallenge } = await supabase
+    .from('challenges')
+    .select('*')
+    .eq('is_active', true)
+    .eq('week_start', weekStart)
+    .single()
+
+  if (activeChallenge) {
+    // Check previous completion to guard one-time bonus award
+    const { data: prevProgress } = await supabase
+      .from('challenge_progress')
+      .select('is_completed')
+      .eq('challenge_id', activeChallenge.id)
+      .eq('user_id', userId)
+      .single()
+
+    const wasCompleted = prevProgress?.is_completed || false
+
+    let progressValue = 0
+
+    if (activeChallenge.challenge_type === 'number_of_runs') {
+      const { data: runs } = await supabase
+        .from('activities')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('activity_type', 'run')
+        .neq('activity_subtype', 'challenge_completion_bonus')
+        .gte('date', weekStart)
+      progressValue = runs?.length || 0
+    } else if (activeChallenge.challenge_type === 'total_distance') {
+      const { data: runs } = await supabase
+        .from('activities')
+        .select('distance_km')
+        .eq('user_id', userId)
+        .eq('activity_type', 'run')
+        .neq('activity_subtype', 'challenge_completion_bonus')
+        .gte('date', weekStart)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      progressValue = runs?.reduce((sum: number, r: any) => sum + (r.distance_km || 0), 0) || 0
+    } else if (activeChallenge.challenge_type === 'single_run_distance') {
+      const { data: runs } = await supabase
+        .from('activities')
+        .select('distance_km')
+        .eq('user_id', userId)
+        .eq('activity_type', 'run')
+        .neq('activity_subtype', 'challenge_completion_bonus')
+        .gte('date', weekStart)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      progressValue = Math.max(...(runs?.map((r: any) => r.distance_km || 0) || [0]))
+    } else if (activeChallenge.challenge_type === 'activity_streak') {
+      progressValue = currentStreak
+    } else if (activeChallenge.challenge_type === 'activity_type') {
+      const { data: activities } = await supabase
+        .from('activities')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('activity_subtype', activeChallenge.target_activity_type)
+        .gte('date', weekStart)
+      progressValue = activities?.length || 0
+    }
+
+    const isCompleted = progressValue >= activeChallenge.target_value
+
+    await supabase
+      .from('challenge_progress')
+      .upsert({
+        challenge_id: activeChallenge.id,
+        user_id: userId,
+        current_value: progressValue,
+        is_completed: isCompleted,
+        completed_at: isCompleted ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'challenge_id,user_id' })
+
+    // Award bonus points only the first time the challenge is completed
+    if (isCompleted && !wasCompleted) {
+      const bonusPoints = activeChallenge.bonus_points || 10
+      await supabase
+        .from('activities')
+        .insert({
+          user_id: userId,
+          date: date,
+          activity_type: activityType,
+          points: bonusPoints,
+          streak_bonus: 0,
+          total_points_that_day: bonusPoints,
+          activity_subtype: 'challenge_completion_bonus',
+        })
+      // Directly increment weekly_stats since recalculateStreak already ran
+      const { data: freshWeekly } = await supabase
+        .from('weekly_stats')
+        .select('total_points')
+        .eq('user_id', userId)
+        .eq('week_start', weekStart)
+        .single()
+      await supabase
+        .from('weekly_stats')
+        .update({ total_points: (freshWeekly?.total_points || 0) + bonusPoints })
+        .eq('user_id', userId)
+        .eq('week_start', weekStart)
+    }
+  }
 
   return { success: true, points: totalPoints, basePoints, streakBonus, newStreak: currentStreak }
 }
