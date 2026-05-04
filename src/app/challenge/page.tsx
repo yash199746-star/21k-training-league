@@ -137,6 +137,7 @@ interface ParticipantData {
   completed:     boolean;
   points:        number;
   progressLabel: string;
+  isMe:          boolean;
 }
 
 interface PastChallengeData {
@@ -203,9 +204,9 @@ const formLabelStyle: React.CSSProperties = {
 };
 
 // ── Progress row ───────────────────────────────────────────────────────────
-function ProgressRow({ name, initials, avatarUrl, progress, target, completed, points, progressLabel }: {
+function ProgressRow({ name, initials, avatarUrl, progress, target, completed, points, progressLabel, isMe }: {
   name: string; initials: string; avatarUrl: string | null; progress: number;
-  target: number; completed: boolean; points: number; progressLabel: string;
+  target: number; completed: boolean; points: number; progressLabel: string; isMe: boolean;
 }) {
   const pct = Math.min((progress / Math.max(target, 0.01)) * 100, 100);
   return (
@@ -262,6 +263,22 @@ function ProgressRow({ name, initials, avatarUrl, progress, target, completed, p
       <div style={{ height: "6px", backgroundColor: "rgba(212,197,169,0.1)", borderRadius: "999px", overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${pct}%`, backgroundColor: completed ? "#4A7C59" : "#C9B87A", borderRadius: "999px", transition: "width 0.4s ease" }} />
       </div>
+      {isMe && completed && (
+        <div style={{
+          background: "rgba(74,124,89,0.2)",
+          border: "1px solid #4A7C59",
+          borderRadius: "8px",
+          padding: "8px 12px",
+          marginTop: "10px",
+          fontFamily: "Montserrat, sans-serif",
+          fontSize: "12px",
+          fontWeight: 700,
+          color: "#4A7C59",
+          letterSpacing: "0.08em",
+        }}>
+          ✓ CHALLENGE COMPLETE — +{points} PTS AWARDED
+        </div>
+      )}
     </div>
   );
 }
@@ -276,7 +293,8 @@ export default function ChallengePage() {
   const [myName,        setMyName]        = useState("");
   const [currentWeekNum, setCurrentWeekNum] = useState(1);
   const [challenge,     setChallenge]     = useState<ChallengeData | null>(null);
-  const [participants,  setParticipants]  = useState<ParticipantData[]>([]);
+  const [participants,      setParticipants]      = useState<ParticipantData[]>([]);
+  const [allUsersCompleted, setAllUsersCompleted] = useState(false);
   const [upcoming,      setUpcoming]      = useState<UpcomingChallengeData | null>(null);
   const [pastList,      setPastList]      = useState<PastChallengeData[]>([]);
 
@@ -404,11 +422,13 @@ export default function ChallengePage() {
             completed:     done,
             points:        done ? bonusPts : 0,
             progressLabel: buildProgressLabel(active.challenge_type, val, active.target_value),
+            isMe,
           };
         });
         // Sort: completed first, then by progress desc
         parts.sort((a, b) => (b.completed ? 1 : 0) - (a.completed ? 1 : 0) || b.progress - a.progress);
         setParticipants(parts);
+        setAllUsersCompleted(parts.length > 0 && parts.every(p => p.completed));
       }
 
       // ── Inactive challenges: split into upcoming vs past ──────────────────
@@ -703,6 +723,21 @@ export default function ChallengePage() {
               <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(212,197,169,0.5)", margin: 0 }}>
                 Lead this week&apos;s challenge and keep the group motivated.
               </p>
+              {allUsersCompleted && (
+                <div style={{
+                  background: "rgba(201,184,122,0.15)",
+                  border: "1px solid rgba(201,184,122,0.4)",
+                  borderRadius: "8px",
+                  padding: "12px",
+                  marginTop: "12px",
+                  fontFamily: "Montserrat, sans-serif",
+                  fontSize: "13px",
+                  color: "#C9B87A",
+                  textAlign: "center",
+                }}>
+                  🏆 All teammates completed the challenge! +5 bonus pts awarded to you.
+                </div>
+              )}
             </div>
           </div>
         )}
