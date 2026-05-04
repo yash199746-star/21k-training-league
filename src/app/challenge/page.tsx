@@ -390,12 +390,13 @@ export default function ChallengePage() {
         const myCompleted = myProgress >= active.target_value;
         const bonusPts = active.bonus_points || 10;
 
-        // Fire-and-forget progress upsert
-        supabase.from("challenge_progress").upsert({
+        // Recalculate and persist progress every page load — self-heals stale data
+        await supabase.from("challenge_progress").upsert({
           challenge_id: active.id,
           user_id: user.id,
           current_value: myProgress,
           is_completed: myCompleted,
+          completed_at: myCompleted ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
         }, { onConflict: "challenge_id,user_id" });
 
