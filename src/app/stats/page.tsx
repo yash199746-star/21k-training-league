@@ -165,7 +165,7 @@ export default function StatsPage() {
         { data: thisWeek },
       ] = await Promise.all([
         supabase.from("activities")
-          .select("date, activity_type, distance_km, total_points_that_day")
+          .select("date, activity_type, activity_subtype, distance_km, total_points_that_day")
           .eq("user_id", user.id)
           .order("date", { ascending: true }),
         supabase.from("activities")
@@ -186,7 +186,11 @@ export default function StatsPage() {
       ]);
 
       const acts = myActivities ?? [];
-      const runs = acts.filter(a => a.activity_type === "run");
+      const runs = acts.filter(a =>
+        a.activity_type === "run" &&
+        a.activity_subtype !== "challenge_completion_bonus" &&
+        !a.activity_subtype?.startsWith("cm_bonus_")
+      );
 
       // ── Stats grid ──────────────────────────────────────────────────────────
       const totalPoints   = acts.reduce((s, a) => s + (a.total_points_that_day || 0), 0);
@@ -242,7 +246,9 @@ export default function StatsPage() {
 
       // ── Activity mix ─────────────────────────────────────────────────────
       const counts = { run: 0, activity: 0, rest: 0 };
-      acts.forEach(a => { if (a.activity_type in counts) counts[a.activity_type as keyof typeof counts]++; });
+      acts
+        .filter(a => a.activity_subtype !== "challenge_completion_bonus" && !a.activity_subtype?.startsWith("cm_bonus_"))
+        .forEach(a => { if (a.activity_type in counts) counts[a.activity_type as keyof typeof counts]++; });
       setActivityMix([
         { name: "Run",      value: counts.run,      color: "#C9B87A" },
         { name: "Activity", value: counts.activity,  color: "#4A7C59" },

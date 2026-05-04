@@ -227,10 +227,14 @@ export default function ProfilePage() {
           .eq("user_id", user.id),
       ]);
 
-      const acts        = myActivities ?? [];
+      const allActs     = myActivities ?? [];
+      const acts        = allActs.filter(a =>
+        a.activity_subtype !== "challenge_completion_bonus" &&
+        !a.activity_subtype?.startsWith("cm_bonus_")
+      );
       const runs        = acts.filter(a => a.activity_type === "run");
       const totalKm     = runs.reduce((s, a) => s + (a.distance_km || 0), 0);
-      const totalPoints = acts.reduce((s, a) => s + (a.total_points_that_day || 0), 0);
+      const totalPoints = allActs.reduce((s, a) => s + (a.total_points_that_day || 0), 0);
       const longestStreak = streakRow?.longest_streak || 0;
 
       // ── Profile ──────────────────────────────────────────────────────────
@@ -385,16 +389,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          <button
-            onClick={() => {}}
-            style={{
-              backgroundColor: "transparent", border: "1px solid rgba(212,197,169,0.25)", borderRadius: "999px",
-              padding: "8px 20px", fontFamily: "Montserrat, sans-serif", fontSize: "11px", fontWeight: 700,
-              color: "rgba(212,197,169,0.6)", letterSpacing: "0.12em", cursor: "pointer", textTransform: "uppercase",
-            }}
-          >
-            Edit Profile
-          </button>
         </div>
 
         {/* ── Section 2: Season Summary ── */}
@@ -515,16 +509,6 @@ export default function ProfilePage() {
         {/* ── Section 5: Settings ── */}
         <p style={sectionTitle}>Settings</p>
         <div style={{ backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", border: "1px solid rgba(212,197,169,0.08)", borderRadius: "16px", overflow: "hidden" }}>
-          <button
-            onClick={() => {}}
-            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", background: "none", border: "none", borderBottom: "1px solid rgba(212,197,169,0.06)", cursor: "pointer" }}
-          >
-            <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "13px", fontWeight: 500, color: "#F5F2ED" }}>
-              Notification Preferences
-            </span>
-            <ChevronRight />
-          </button>
-
           <button
             onClick={handleSignOut}
             style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", background: "none", border: "none", cursor: "pointer" }}

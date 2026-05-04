@@ -241,9 +241,6 @@ export default function AddActivityPage() {
   const isThursdayToSunday = [0, 4, 5, 6].includes(new Date().getUTCDay());
   const leagueStarted      = new Date() >= LEAGUE_START;
   const cmBannerCondition  = isThursdayToSunday && leagueStarted && myName.trim().toLowerCase() === nextWeekCM.trim().toLowerCase();
-  console.log("[CM Banner Debug] nextWeekCM:", nextWeekCM, "| myName:", myName, "| isThurSun:", isThursdayToSunday, "| leagueStarted:", leagueStarted, "| show:", cmBannerCondition);
-  console.log("[CM Week Debug] week0:", getChallengeMasterForWeek(0), "week1:", getChallengeMasterForWeek(1), "weeksSinceStart:", Math.max(0, Math.floor((new Date().getTime() - LEAGUE_START.getTime()) / (7 * 24 * 60 * 60 * 1000))));
-
   const submitDisabled =
     loadingData ||
     submitting ||

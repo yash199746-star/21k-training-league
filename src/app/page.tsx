@@ -297,27 +297,27 @@ export default function HomePage() {
 
   useEffect(() => {
     async function fetchData() {
-      console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace("/login"); return; }
 
-      const today = new Date().toISOString().split("T")[0];
+      const now = new Date();
+      const today = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0');
+      const leagueStarted = Date.now() >= Date.UTC(2026, 4, 4);
       const thisWeekCM = getChallengeMasterForWeek(0);
       setWeekNum(getCurrentWeekNumber());
 
       const [
-        { data: profiles, error: profilesError },
-        { data: activities, error: activitiesError },
+        { data: profiles },
+        { data: activities },
         { data: streaks },
       ] = await Promise.all([
         supabase.from("profiles").select("id, name, email, avatar_url"),
         supabase.from("activities").select("user_id, date, activity_type, activity_subtype, distance_km, total_points_that_day"),
         supabase.from("streaks").select("user_id, current_streak"),
       ]);
-
-      console.log('[Leaderboard] profiles response:', profiles, 'error:', profilesError);
-      console.log('[Leaderboard] activities response:', activities, 'error:', activitiesError);
 
       if (!profiles) { setLoading(false); return; }
 
@@ -349,12 +349,11 @@ export default function HomePage() {
           todayLabel:     today_.label,
           todayType:      today_.type,
           todayPoints:    today_.points,
-          challengeMaster: name.trim().toLowerCase() === thisWeekCM.trim().toLowerCase(),
+          challengeMaster: leagueStarted && name.trim().toLowerCase() === thisWeekCM.trim().toLowerCase(),
           isCurrentUser:  p.id === user.id,
         };
       });
 
-      console.log('[CM Debug] thisWeekCM:', thisWeekCM, 'players:', built.map(p => p.name));
       built.sort((a, b) => b.points - a.points);
       built.forEach((p, i) => { p.rank = i + 1; });
 
