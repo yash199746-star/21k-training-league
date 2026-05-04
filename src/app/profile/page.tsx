@@ -221,7 +221,7 @@ export default function ProfilePage() {
         supabase.from("streaks")
           .select("current_streak, longest_streak")
           .eq("user_id", user.id)
-          .single(),
+          .maybeSingle(),
         supabase.from("weekly_stats")
           .select("week_start, runs_used, activity_days_used, rest_day_used")
           .eq("user_id", user.id),

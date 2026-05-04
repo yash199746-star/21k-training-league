@@ -135,7 +135,7 @@ export async function logActivity({
     .select('*')
     .eq('user_id', userId)
     .eq('week_start', weekStart)
-    .single()
+    .maybeSingle()
 
   if (activityType === 'activity' && (weeklyStats?.activity_days_used || 0) >= 2) {
     return { success: false, error: 'Maximum 2 activity days per week reached' }
@@ -199,7 +199,7 @@ export async function logActivity({
     .select('*')
     .eq('is_active', true)
     .eq('week_start', weekStart)
-    .single()
+    .maybeSingle()
 
   if (activeChallenge) {
     // Check previous completion to guard one-time bonus award
@@ -208,7 +208,7 @@ export async function logActivity({
       .select('is_completed')
       .eq('challenge_id', activeChallenge.id)
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
     const wasCompleted = prevProgress?.is_completed || false
 
@@ -288,7 +288,7 @@ export async function logActivity({
         .select('total_points')
         .eq('user_id', userId)
         .eq('week_start', weekStart)
-        .single()
+        .maybeSingle()
       await supabase
         .from('weekly_stats')
         .update({ total_points: (freshWeekly?.total_points || 0) + bonusPoints })
@@ -323,7 +323,7 @@ export async function logActivity({
             .select('id')
             .eq('user_id', cmUserId)
             .eq('activity_subtype', 'cm_bonus_' + activeChallenge.id)
-            .single()
+            .maybeSingle()
 
           if (!existingCMBonus) {
             await supabase
@@ -343,7 +343,7 @@ export async function logActivity({
               .select('total_points')
               .eq('user_id', cmUserId)
               .eq('week_start', weekStart)
-              .single()
+              .maybeSingle()
 
             await supabase
               .from('weekly_stats')

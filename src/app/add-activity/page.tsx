@@ -179,9 +179,9 @@ export default function AddActivityPage() {
 
       const weekStart = getWeekStart(new Date());
       const [{ data: weeklyStats }, { data: streakData }, { data: myProfile }] = await Promise.all([
-        supabase.from("weekly_stats").select("*").eq("user_id", authUser.id).eq("week_start", weekStart).single(),
-        supabase.from("streaks").select("*").eq("user_id", authUser.id).single(),
-        supabase.from("profiles").select("name").eq("id", authUser.id).single(),
+        supabase.from("weekly_stats").select("*").eq("user_id", authUser.id).eq("week_start", weekStart).maybeSingle(),
+        supabase.from("streaks").select("*").eq("user_id", authUser.id).maybeSingle(),
+        supabase.from("profiles").select("name").eq("id", authUser.id).maybeSingle(),
       ]);
 
       setActivityUsed(weeklyStats?.activity_days_used || 0);

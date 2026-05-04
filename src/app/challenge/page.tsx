@@ -351,7 +351,7 @@ export default function ChallengePage() {
           .select("activity_type, distance_km")
           .eq("user_id", user.id)
           .gte("date", weekStart),
-        supabase.from("streaks").select("current_streak").eq("user_id", user.id).single(),
+        supabase.from("streaks").select("current_streak").eq("user_id", user.id).maybeSingle(),
         supabase.from("challenges").select("*").eq("is_active", true),
         supabase.from("challenges")
           .select("id, title, description, week_start")
