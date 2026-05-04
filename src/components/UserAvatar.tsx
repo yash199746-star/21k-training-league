@@ -17,7 +17,7 @@ export default function UserAvatar() {
         .from("profiles")
         .select("name, avatar_url")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
       if (data) {
         setAvatarUrl(data.avatar_url || null);
         setInitials((data.name || "?").charAt(0).toUpperCase());

@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     .from('profiles')
     .select('id, name')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
   if (existingProfile) {
     await supabase

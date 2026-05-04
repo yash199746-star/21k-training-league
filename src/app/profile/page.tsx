@@ -241,8 +241,9 @@ export default function ProfilePage() {
       const name     = profileRow?.name || profileRow?.email?.split("@")[0] || "Runner";
       const initials = name.charAt(0).toUpperCase();
       const email    = profileRow?.email || user.email || "";
-      const cmName   = getChallengeMasterName();
-      const isCM     = name.toLowerCase() === cmName.toLowerCase();
+      const cmName      = getChallengeMasterName();
+      const leagueStarted = Date.now() >= new Date(Date.UTC(2026, 4, 4)).getTime();
+      const isCM        = leagueStarted && name.toLowerCase() === cmName.toLowerCase();
 
       setProfile({ name, initials, email, avatar_url: profileRow?.avatar_url || null, isChallengeMaster: isCM, challengeMasterWeek: getCurrentWeekNumber() });
 

@@ -37,7 +37,10 @@ async function recalculateStreak(supabase: any, userId: string) {
   // Skip challenge_completion_bonus rows — their points are fixed and must not be inflated.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const activity of allActivities) {
-    if (activity.activity_subtype === 'challenge_completion_bonus') continue
+    if (
+      activity.activity_subtype === 'challenge_completion_bonus' ||
+      activity.activity_subtype?.startsWith('cm_bonus_')
+    ) continue
 
     const streakPosition = dateStreakMap[activity.date] || 1
     const streakBonus = Math.min(streakPosition, 7)

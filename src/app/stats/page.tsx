@@ -155,7 +155,9 @@ export default function StatsPage() {
       const weekStart     = getWeekStart(new Date());
       const thirtyAgo     = new Date();
       thirtyAgo.setDate(thirtyAgo.getDate() - 30);
-      const thirtyAgoStr  = thirtyAgo.toISOString().split("T")[0];
+      const thirtyAgoStr  = thirtyAgo.getFullYear() + '-' +
+        String(thirtyAgo.getMonth() + 1).padStart(2, '0') + '-' +
+        String(thirtyAgo.getDate()).padStart(2, '0');
 
       const [
         { data: myActivities },

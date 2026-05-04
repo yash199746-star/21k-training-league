@@ -67,7 +67,12 @@ function getCurrentWeekNumber(): number {
 function todayActivityFor(activities: RawActivity[], userId: string, today: string): {
   label: string; type: ActivityType; points: number;
 } {
-  const act = activities.find(a => a.user_id === userId && a.date === today);
+  const act = activities.find(a =>
+    a.user_id === userId &&
+    a.date === today &&
+    a.activity_subtype !== 'challenge_completion_bonus' &&
+    !a.activity_subtype?.startsWith('cm_bonus_')
+  );
   if (!act) return { label: "No activity yet", type: "none", points: 0 };
   if (act.activity_type === "run") {
     const km = act.distance_km != null ? Number(act.distance_km.toFixed(1)) : "?";
