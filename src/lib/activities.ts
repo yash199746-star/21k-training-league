@@ -295,6 +295,65 @@ export async function logActivity({
         .eq('user_id', userId)
         .eq('week_start', weekStart)
     }
+
+    // Check if ALL users have now completed the challenge
+    if (isCompleted) {
+      const { data: allProfiles } = await supabase
+        .from('profiles')
+        .select('id')
+
+      if (allProfiles && allProfiles.length > 0) {
+        const { data: allProgress } = await supabase
+          .from('challenge_progress')
+          .select('user_id, is_completed')
+          .eq('challenge_id', activeChallenge.id)
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const allCompleted = allProfiles.every((profile: any) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          allProgress?.some((p: any) => p.user_id === profile.id && p.is_completed === true)
+        )
+
+        if (allCompleted) {
+          const cmUserId = activeChallenge.created_by
+
+          // Prevent double award using a unique activity_subtype per challenge
+          const { data: existingCMBonus } = await supabase
+            .from('activities')
+            .select('id')
+            .eq('user_id', cmUserId)
+            .eq('activity_subtype', 'cm_bonus_' + activeChallenge.id)
+            .single()
+
+          if (!existingCMBonus) {
+            await supabase
+              .from('activities')
+              .insert({
+                user_id: cmUserId,
+                date: date,
+                activity_type: 'run',
+                points: 5,
+                streak_bonus: 0,
+                total_points_that_day: 5,
+                activity_subtype: 'cm_bonus_' + activeChallenge.id,
+              })
+
+            const { data: cmWeekly } = await supabase
+              .from('weekly_stats')
+              .select('total_points')
+              .eq('user_id', cmUserId)
+              .eq('week_start', weekStart)
+              .single()
+
+            await supabase
+              .from('weekly_stats')
+              .update({ total_points: (cmWeekly?.total_points || 0) + 5 })
+              .eq('user_id', cmUserId)
+              .eq('week_start', weekStart)
+          }
+        }
+      }
+    }
   }
 
   return { success: true, points: totalPoints, basePoints, streakBonus, newStreak: currentStreak }
