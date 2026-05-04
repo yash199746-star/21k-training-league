@@ -13,8 +13,19 @@ async function recalculateStreak(supabase: any, userId: string) {
     return { currentStreak: 0, longestStreak: 0, lastActivityDate: null }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const uniqueDates: string[] = Array.from(new Set<string>(allActivities.map((a: any) => a.date as string))).sort()
+  const uniqueDates: string[] = Array.from(
+    new Set<string>(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      allActivities
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((a: any) =>
+          a.activity_subtype !== 'challenge_completion_bonus' &&
+          !a.activity_subtype?.startsWith('cm_bonus_')
+        )
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((a: any) => a.date as string)
+    )
+  ).sort()
 
   // Assign streak position to every unique date
   const dateStreakMap: Record<string, number> = {}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import AppLayout from "@/components/AppLayout";
@@ -87,10 +87,14 @@ function buildProgressLabel(type: string, progress: number, target: number): str
 
 function computeProgress(
   type: string,
-  weekActs: { activity_type: string; distance_km: number | null }[],
+  weekActs: { activity_type: string; distance_km: number | null; activity_subtype?: string | null }[],
   currentStreak: number
 ): number {
-  const runs = weekActs.filter(a => a.activity_type === "run");
+  const runs = weekActs.filter(a =>
+    a.activity_type === "run" &&
+    a.activity_subtype !== "challenge_completion_bonus" &&
+    !a.activity_subtype?.startsWith("cm_bonus_")
+  );
   switch (type) {
     case "total_distance":
       return runs.reduce((s, a) => s + (a.distance_km || 0), 0);
@@ -101,7 +105,11 @@ function computeProgress(
     case "activity_streak":
       return currentStreak;
     case "activity_type":
-      return weekActs.filter(a => a.activity_type === "activity").length;
+      return weekActs.filter(a =>
+        a.activity_type === "activity" &&
+        a.activity_subtype !== "challenge_completion_bonus" &&
+        !a.activity_subtype?.startsWith("cm_bonus_")
+      ).length;
     default:
       return 0;
   }
@@ -308,7 +316,6 @@ export default function ChallengePage() {
   const [formSubmitted,  setFormSubmitted]  = useState(false);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formErrors,     setFormErrors]     = useState<string[]>([]);
-  const formRef = useRef<HTMLDivElement>(null);
 
   // Open form automatically if URL has ?openForm=true
   useEffect(() => {
@@ -349,7 +356,7 @@ export default function ChallengePage() {
         supabase.from("profiles").select("name").eq("id", user.id).single(),
         supabase.from("profiles").select("id, name, avatar_url"),
         supabase.from("activities")
-          .select("activity_type, distance_km")
+          .select("activity_type, distance_km, activity_subtype")
           .eq("user_id", user.id)
           .gte("date", weekStart),
         supabase.from("streaks").select("current_streak").eq("user_id", user.id).maybeSingle(),
@@ -565,7 +572,7 @@ export default function ChallengePage() {
 
         {/* ── Challenge creation form ── */}
         {showForm && !formSubmitted && (
-          <div ref={formRef} style={{
+          <div style={{
             backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
             border: "1px solid rgba(212,197,169,0.12)",
             borderRadius: "16px", padding: "20px", marginBottom: "28px",
