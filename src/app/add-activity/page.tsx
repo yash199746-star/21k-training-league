@@ -11,7 +11,7 @@ import type { User } from "@supabase/supabase-js";
 
 type ActivityType = "run" | "activity" | "rest" | null;
 
-const SUBTYPES = ["Walk", "Cycle", "Gym", "Yoga", "Swim", "Sports", "Other"];
+const SUBTYPES = ["Walk", "Cycle", "Gym", "Yoga", "Swim", "Climbing", "Badminton", "Cricket", "Sports", "Other"];
 const ACTIVITY_LIMIT = 2;
 
 // ── CM rotation ─────────────────────────────────────────────────────────────
