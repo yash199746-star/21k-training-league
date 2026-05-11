@@ -12,7 +12,6 @@ import type { User } from "@supabase/supabase-js";
 type ActivityType = "run" | "activity" | "rest" | null;
 
 const SUBTYPES = ["Walk", "Cycle", "Gym", "Yoga", "Swim", "Climbing", "Badminton", "Cricket", "Sports", "Other"];
-const ACTIVITY_LIMIT = 2;
 
 // ── CM rotation ─────────────────────────────────────────────────────────────
 const CM_ORDER = ["Yash", "Hardik", "Devansh"];
@@ -130,7 +129,6 @@ export default function AddActivityPage() {
   // Auth & real data state
   const [user,             setUser]             = useState<User | null>(null);
   const [myName,           setMyName]           = useState("");
-  const [activityUsed,     setActivityUsed]     = useState(0);
   const [restUsed,         setRestUsed]         = useState(false);
   const [currentStreak,    setCurrentStreak]    = useState(0);
   const [lastActivityDate, setLastActivityDate] = useState<string | null>(null);
@@ -184,7 +182,6 @@ export default function AddActivityPage() {
         supabase.from("profiles").select("name").eq("id", authUser.id).maybeSingle(),
       ]);
 
-      setActivityUsed(weeklyStats?.activity_days_used || 0);
       setRestUsed((weeklyStats?.rest_day_used || 0) >= 1);
       setCurrentStreak(streakData?.current_streak || 0);
       setLastActivityDate(streakData?.last_activity_date || null);
@@ -212,8 +209,6 @@ export default function AddActivityPage() {
         setDateAlreadyLogged(realActivities.length > 0);
       });
   }, [date, user]);
-
-  const activityRemaining = ACTIVITY_LIMIT - activityUsed;
 
   // Preview streak: what the streak will be AFTER this entry is logged
   const dayBeforeSelected = (() => {
@@ -245,13 +240,11 @@ export default function AddActivityPage() {
     loadingData ||
     submitting ||
     dateAlreadyLogged ||
-    (activityType === "activity" && activityRemaining <= 0) ||
-    (activityType === "rest"     && restUsed);
+    (activityType === "rest" && restUsed);
 
   function getDisabledReason(): string | null {
     if (dateAlreadyLogged) return date === maxDate ? "Activity already logged for today." : "Activity already logged for yesterday.";
-    if (activityType === "activity" && activityRemaining <= 0) return "Maximum 2 activity days reached this week.";
-    if (activityType === "rest"     && restUsed)               return "Rest day already used this week.";
+    if (activityType === "rest" && restUsed) return "Rest day already used this week.";
     return null;
   }
 
@@ -269,8 +262,7 @@ export default function AddActivityPage() {
       if (!duration || parseInt(duration, 10) <= 0) errs.push("Please enter a valid duration.");
     }
     if (minDate && maxDate && (date < minDate || date > maxDate)) errs.push("Can only log activities for today or yesterday.");
-    if (activityType === "activity" && activityRemaining <= 0) errs.push("Maximum 2 activity days reached this week.");
-    if (activityType === "rest"     && restUsed)               errs.push("Rest day already used this week.");
+    if (activityType === "rest" && restUsed) errs.push("Rest day already used this week.");
     return errs;
   }
 
@@ -557,17 +549,6 @@ export default function AddActivityPage() {
         </div>
 
         {/* Weekly usage info line */}
-        {activityType === "activity" && (
-          <p style={{
-            fontFamily: "Montserrat, sans-serif",
-            fontSize: "11px",
-            color: activityRemaining > 0 ? "rgba(212,197,169,0.5)" : "rgba(220,90,90,0.8)",
-            marginTop: "10px",
-            marginBottom: "16px",
-          }}>
-            {activityUsed} of {ACTIVITY_LIMIT} activity days used this week
-          </p>
-        )}
         {activityType === "rest" && restUsed && (
           <p style={{
             fontFamily: "Montserrat, sans-serif",
@@ -580,7 +561,7 @@ export default function AddActivityPage() {
             Rest day already used this week
           </p>
         )}
-        {(activityType === null || activityType === "run" || (activityType === "rest" && !restUsed)) && (
+        {(activityType === null || activityType === "run" || activityType === "activity" || (activityType === "rest" && !restUsed)) && (
           <div style={{ marginBottom: "20px" }} />
         )}
 

@@ -151,9 +151,6 @@ export async function logActivity({
     .eq('week_start', weekStart)
     .maybeSingle()
 
-  if (activityType === 'activity' && (weeklyStats?.activity_days_used || 0) >= 2) {
-    return { success: false, error: 'Maximum 2 activity days per week reached' }
-  }
   if (activityType === 'rest' && (weeklyStats?.rest_day_used || 0) >= 1) {
     return { success: false, error: 'Rest day already used this week' }
   }
