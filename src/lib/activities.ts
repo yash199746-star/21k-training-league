@@ -282,16 +282,19 @@ export async function logActivity({
 
     const isCompleted = progressValue >= activeChallenge.target_value
 
-    await supabase
-      .from('challenge_progress')
-      .upsert({
-        challenge_id: activeChallenge.id,
-        user_id: userId,
-        current_value: progressValue,
-        is_completed: isCompleted,
-        completed_at: isCompleted ? new Date().toISOString() : null,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'challenge_id,user_id' })
+    // Only write progress while incomplete — preserves the final completed state
+    if (!wasCompleted) {
+      await supabase
+        .from('challenge_progress')
+        .upsert({
+          challenge_id: activeChallenge.id,
+          user_id: userId,
+          current_value: progressValue,
+          is_completed: isCompleted,
+          completed_at: isCompleted ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'challenge_id,user_id' })
+    }
 
     // Award bonus points only the first time the challenge is completed
     if (isCompleted && !wasCompleted) {

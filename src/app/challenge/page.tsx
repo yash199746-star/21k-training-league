@@ -390,15 +390,18 @@ export default function ChallengePage() {
         const myCompleted = myProgress >= active.target_value;
         const bonusPts = active.bonus_points || 10;
 
-        // Recalculate and persist progress every page load — self-heals stale data
-        await supabase.from("challenge_progress").upsert({
-          challenge_id: active.id,
-          user_id: user.id,
-          current_value: myProgress,
-          is_completed: myCompleted,
-          completed_at: myCompleted ? new Date().toISOString() : null,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "challenge_id,user_id" });
+        // Self-heal stale progress on page load, but skip if already completed
+        const myRow = progressRows?.find(pr => pr.user_id === user.id);
+        if (!myRow?.is_completed) {
+          await supabase.from("challenge_progress").upsert({
+            challenge_id: active.id,
+            user_id: user.id,
+            current_value: myProgress,
+            is_completed: myCompleted,
+            completed_at: myCompleted ? new Date().toISOString() : null,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "challenge_id,user_id" });
+        }
 
         setChallenge({
           id:            active.id,
@@ -417,20 +420,21 @@ export default function ChallengePage() {
 
         // Build participants from all profiles
         const parts: ParticipantData[] = (allProfiles ?? []).map(p => {
-          const isMe   = p.id === user.id;
-          const row    = progressRows?.find(pr => pr.user_id === p.id);
-          const val    = isMe ? myProgress : (row?.current_value || 0);
-          const done   = val >= active.target_value;
-          const name   = p.name || "Unknown";
+          const isMe      = p.id === user.id;
+          const row       = progressRows?.find(pr => pr.user_id === p.id);
+          const val       = isMe ? myProgress : (row?.current_value || 0);
+          const done      = val >= active.target_value;
+          const displayVal = Math.min(val, active.target_value);
+          const name      = p.name || "Unknown";
           return {
             name,
             initials:      name.charAt(0).toUpperCase(),
             avatarUrl:     p.avatar_url || null,
-            progress:      val,
+            progress:      displayVal,
             target:        active.target_value,
             completed:     done,
             points:        done ? bonusPts : 0,
-            progressLabel: buildProgressLabel(active.challenge_type, val, active.target_value),
+            progressLabel: buildProgressLabel(active.challenge_type, displayVal, active.target_value),
             isMe,
           };
         });
