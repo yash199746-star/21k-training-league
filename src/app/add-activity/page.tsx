@@ -11,7 +11,7 @@ import type { User } from "@supabase/supabase-js";
 
 type ActivityType = "run" | "activity" | "rest" | null;
 
-const SUBTYPES = ["Walk", "Cycle", "Gym", "Yoga", "Swim", "Climbing", "Badminton", "Cricket", "Sports", "Other"];
+const SUBTYPES = ["Walk", "Cycle", "Gym", "Yoga", "Swim", "Climbing", "Badminton", "Cricket", "Trek", "Sports", "Other"];
 
 // ── CM rotation ─────────────────────────────────────────────────────────────
 const CM_ORDER = ["Yash", "Hardik", "Devansh"];
@@ -135,7 +135,8 @@ export default function AddActivityPage() {
   const [loadingData,      setLoadingData]      = useState(true);
   const [submitting,       setSubmitting]       = useState(false);
   const [submitError,      setSubmitError]      = useState<string | null>(null);
-  const [dateAlreadyLogged, setDateAlreadyLogged] = useState(false);
+  const [hasActivityToday, setHasActivityToday] = useState(false);
+  const [hasRestToday,     setHasRestToday]     = useState(false);
 
   // Form state
   const [activityType, setActivityType] = useState<ActivityType>(null);
@@ -191,22 +192,23 @@ export default function AddActivityPage() {
     loadData();
   }, [router]);
 
-  // Check if user already has any activity for the selected date (all types)
+  // Check what's already logged for the selected date to enforce rest-day rules
   useEffect(() => {
     if (!user || !date) return;
     const supabase = createClient();
     supabase
       .from("activities")
-      .select("id, activity_subtype")
+      .select("id, activity_type, activity_subtype")
       .eq("user_id", user.id)
       .eq("date", date)
-      .limit(10)
+      .limit(20)
       .then(({ data }) => {
-        const realActivities = (data ?? []).filter((a: { activity_subtype?: string | null }) =>
+        const real = (data ?? []).filter((a: { activity_subtype?: string | null }) =>
           a.activity_subtype !== 'challenge_completion_bonus' &&
           !a.activity_subtype?.startsWith('cm_bonus_')
         );
-        setDateAlreadyLogged(realActivities.length > 0);
+        setHasRestToday(real.some((a: { activity_type?: string }) => a.activity_type === 'rest'));
+        setHasActivityToday(real.some((a: { activity_type?: string }) => a.activity_type !== 'rest'));
       });
   }, [date, user]);
 
@@ -239,12 +241,13 @@ export default function AddActivityPage() {
   const submitDisabled =
     loadingData ||
     submitting ||
-    dateAlreadyLogged ||
-    (activityType === "rest" && restUsed);
+    (activityType === "rest" && (hasActivityToday || restUsed)) ||
+    (activityType !== "rest" && activityType !== null && hasRestToday);
 
   function getDisabledReason(): string | null {
-    if (dateAlreadyLogged) return date === maxDate ? "Activity already logged for today." : "Activity already logged for yesterday.";
+    if (activityType === "rest" && hasActivityToday) return "You already logged an activity today.";
     if (activityType === "rest" && restUsed) return "Rest day already used this week.";
+    if (activityType !== "rest" && activityType !== null && hasRestToday) return "Today is a rest day.";
     return null;
   }
 
@@ -262,7 +265,9 @@ export default function AddActivityPage() {
       if (!duration || parseInt(duration, 10) <= 0) errs.push("Please enter a valid duration.");
     }
     if (minDate && maxDate && (date < minDate || date > maxDate)) errs.push("Can only log activities for today or yesterday.");
+    if (activityType === "rest" && hasActivityToday) errs.push("You already logged an activity today.");
     if (activityType === "rest" && restUsed) errs.push("Rest day already used this week.");
+    if (activityType !== "rest" && hasRestToday) errs.push("Today is a rest day.");
     return errs;
   }
 
@@ -471,8 +476,8 @@ export default function AddActivityPage() {
           </div>
         )}
 
-        {/* Already logged for selected date */}
-        {dateAlreadyLogged && (
+        {/* Rest-day conflict banners */}
+        {activityType === "rest" && hasActivityToday && (
           <div style={{
             backgroundColor: "rgba(220,90,90,0.08)",
             border: "1px solid rgba(220,90,90,0.25)",
@@ -487,7 +492,26 @@ export default function AddActivityPage() {
               fontWeight: 600,
               margin: 0,
             }}>
-              {date === maxDate ? "Activity already logged for today." : "Activity already logged for yesterday."}
+              You already logged an activity today.
+            </p>
+          </div>
+        )}
+        {activityType !== "rest" && activityType !== null && hasRestToday && (
+          <div style={{
+            backgroundColor: "rgba(220,90,90,0.08)",
+            border: "1px solid rgba(220,90,90,0.25)",
+            borderRadius: "12px",
+            padding: "12px 16px",
+            marginBottom: "16px",
+          }}>
+            <p style={{
+              fontFamily: "Montserrat, sans-serif",
+              fontSize: "12px",
+              color: "rgba(220,90,90,0.9)",
+              fontWeight: 600,
+              margin: 0,
+            }}>
+              Today is a rest day.
             </p>
           </div>
         )}
@@ -508,7 +532,7 @@ export default function AddActivityPage() {
           <div style={{ display: "flex", gap: "10px" }}>
             {TYPE_CARDS.map(({ type, label, Icon }) => {
               const active   = activityType === type;
-              const cardDisabled = type === "rest" && restUsed;
+              const cardDisabled = type === "rest" && (restUsed || hasActivityToday);
               return (
                 <button
                   key={type}
@@ -549,7 +573,7 @@ export default function AddActivityPage() {
         </div>
 
         {/* Weekly usage info line */}
-        {activityType === "rest" && restUsed && (
+        {activityType === "rest" && (restUsed || hasActivityToday) && (
           <p style={{
             fontFamily: "Montserrat, sans-serif",
             fontSize: "11px",
@@ -558,10 +582,10 @@ export default function AddActivityPage() {
             marginBottom: "16px",
             fontWeight: 600,
           }}>
-            Rest day already used this week
+            {hasActivityToday ? "Already logged today — rest day not available" : "Rest day already used this week"}
           </p>
         )}
-        {(activityType === null || activityType === "run" || activityType === "activity" || (activityType === "rest" && !restUsed)) && (
+        {(activityType === null || activityType === "run" || activityType === "activity" || (activityType === "rest" && !restUsed && !hasActivityToday)) && (
           <div style={{ marginBottom: "20px" }} />
         )}
 

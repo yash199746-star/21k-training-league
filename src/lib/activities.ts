@@ -8,6 +8,7 @@ async function recalculateStreak(supabase: any, userId: string) {
     .select('id, date, activity_type, activity_subtype, points')
     .eq('user_id', userId)
     .order('date', { ascending: true })
+    .order('id',   { ascending: true })
 
   if (!allActivities || allActivities.length === 0) {
     return { currentStreak: 0, longestStreak: 0, lastActivityDate: null }
@@ -44,6 +45,21 @@ async function recalculateStreak(supabase: any, userId: string) {
     dateStreakMap[uniqueDates[i]] = streakCount
   }
 
+  // Track the first real activity inserted per date — only it gets the streak bonus.
+  // allActivities is ordered by (date asc, id asc) so the first occurrence wins.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const firstRealPerDate: Record<string, string> = {}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const activity of allActivities) {
+    if (
+      activity.activity_subtype === 'challenge_completion_bonus' ||
+      activity.activity_subtype?.startsWith('cm_bonus_')
+    ) continue
+    if (!firstRealPerDate[activity.date]) {
+      firstRealPerDate[activity.date] = activity.id
+    }
+  }
+
   // Update ALL activity rows with correct streak bonus and total points.
   // Skip challenge_completion_bonus rows — their points are fixed and must not be inflated.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -54,7 +70,8 @@ async function recalculateStreak(supabase: any, userId: string) {
     ) continue
 
     const streakPosition = dateStreakMap[activity.date] || 1
-    const streakBonus = Math.min(streakPosition, 7)
+    const isFirstOfDay = firstRealPerDate[activity.date] === activity.id
+    const streakBonus = isFirstOfDay ? Math.min(streakPosition, 7) : 0
     const totalPoints = (activity.points || 0) + streakBonus
 
     await supabase
@@ -151,9 +168,34 @@ export async function logActivity({
     .eq('week_start', weekStart)
     .maybeSingle()
 
-  if (activityType === 'rest' && (weeklyStats?.rest_day_used || 0) >= 1) {
-    return { success: false, error: 'Rest day already used this week' }
+  // Fetch today's real activities (bonus rows excluded) for rest-day logic
+  const { data: todaysRaw } = await supabase
+    .from('activities')
+    .select('id, activity_type, activity_subtype')
+    .eq('user_id', userId)
+    .eq('date', date)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const todaysReal = (todaysRaw || []).filter((a: any) =>
+    a.activity_subtype !== 'challenge_completion_bonus' &&
+    !a.activity_subtype?.startsWith('cm_bonus_')
+  )
+
+  if (activityType === 'rest') {
+    if (todaysReal.length > 0) {
+      return { success: false, error: 'Cannot log rest day — you already have an activity today' }
+    }
+    if ((weeklyStats?.rest_day_used || 0) >= 1) {
+      return { success: false, error: 'Rest day already used this week' }
+    }
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hasRestToday = todaysReal.some((a: any) => a.activity_type === 'rest')
+    if (hasRestToday) {
+      return { success: false, error: 'Cannot log activity — today is marked as a rest day' }
+    }
   }
+
+  const isFirstActivityOfDay = todaysReal.length === 0
 
   // Insert activity with placeholder points — recalculateStreak will correct them
   const { error: activityError } = await supabase
@@ -190,7 +232,8 @@ export async function logActivity({
   // Recalculate all streaks and points from scratch, updating every affected row
   const { currentStreak, longestStreak, lastActivityDate } = await recalculateStreak(supabase, userId)
 
-  const streakBonus = Math.min(currentStreak, 7)
+  // Streak bonus only applies to the first activity of the day
+  const streakBonus = isFirstActivityOfDay ? Math.min(currentStreak, 7) : 0
   const totalPoints = basePoints + streakBonus
 
   // Upsert streaks table with recalculated values
