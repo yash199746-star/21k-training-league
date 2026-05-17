@@ -501,19 +501,51 @@ export default function ChallengePage() {
     if (!formDesc.trim())                           errs.push("Please enter a description.");
     if (!formTarget || parseFloat(formTarget) <= 0) errs.push("Please enter a valid target.");
     if (errs.length) { setFormErrors(errs); return; }
+
+    // Validate that the current user is actually next week's CM
+    const nextCM = getChallengeMasterForWeek(1);
+    if (myName.trim().toLowerCase() !== nextCM.trim().toLowerCase()) {
+      setFormErrors(["Only the Challenge Master can submit this week's challenge."]);
+      return;
+    }
+
     setFormErrors([]);
     setFormSubmitting(true);
 
     const supabase = createClient();
-    const { error } = await supabase.from("challenges").insert({
-      created_by:     userId,
-      week_start:     getNextMonday(),
-      title:          formTitle.trim(),
-      description:    formDesc.trim(),
-      challenge_type: CHALLENGE_TYPE_MAP[formType],
-      target_value:   parseFloat(formTarget),
-      is_active:      false,
-    });
+    const nextMonday = getNextMonday();
+
+    // Upsert: update if a challenge already exists for next week, otherwise insert
+    const { data: existing } = await supabase
+      .from("challenges")
+      .select("id")
+      .eq("week_start", nextMonday)
+      .maybeSingle();
+
+    let error;
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from("challenges")
+        .update({
+          title:          formTitle.trim(),
+          description:    formDesc.trim(),
+          challenge_type: CHALLENGE_TYPE_MAP[formType],
+          target_value:   parseFloat(formTarget),
+        })
+        .eq("id", existing.id);
+      error = updateError;
+    } else {
+      const { error: insertError } = await supabase.from("challenges").insert({
+        created_by:     userId,
+        week_start:     nextMonday,
+        title:          formTitle.trim(),
+        description:    formDesc.trim(),
+        challenge_type: CHALLENGE_TYPE_MAP[formType],
+        target_value:   parseFloat(formTarget),
+        is_active:      false,
+      });
+      error = insertError;
+    }
 
     setFormSubmitting(false);
     if (error) { setFormErrors([error.message]); return; }
@@ -568,10 +600,9 @@ export default function ChallengePage() {
           </div>
         </div>
 
-        {/* ── "You're up next" banner ── */}
+        {/* ── "You're up next" / "Already submitted" banner ── */}
         {bannerCondition && (
           <div
-            onClick={() => { setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
             style={{
               backgroundColor: "rgba(201,184,122,0.08)",
               backdropFilter: "blur(10px)",
@@ -580,21 +611,51 @@ export default function ChallengePage() {
               borderRadius: "16px",
               padding: "16px 18px",
               marginBottom: "24px",
-              cursor: "pointer",
               display: "flex",
-              alignItems: "center",
+              alignItems: "flex-start",
               gap: "12px",
             }}
           >
-            <CrownIcon />
-            <div>
-              <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", fontWeight: 700, color: "#C9B87A", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 3px" }}>
-                You&apos;re up next
-              </p>
-              <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(212,197,169,0.55)", margin: 0 }}>
-                You&apos;re Challenge Master for Week {nextWeekNum}. Tap to create the challenge.
-              </p>
-            </div>
+            <div style={{ paddingTop: "2px" }}><CrownIcon /></div>
+            {upcoming ? (
+              <div style={{ flex: 1 }}>
+                <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", fontWeight: 700, color: "#C9B87A", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 4px" }}>
+                  Challenge submitted for Week {getWeekNumber(upcoming.week_start)} ✅
+                </p>
+                <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(212,197,169,0.55)", margin: "0 0 10px" }}>
+                  You can edit it before Sunday 11:59 PM.
+                </p>
+                <button
+                  onClick={() => { setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  style={{
+                    background: "none",
+                    border: "1px solid rgba(201,184,122,0.35)",
+                    borderRadius: "8px",
+                    padding: "5px 14px",
+                    cursor: "pointer",
+                    fontFamily: "Montserrat, sans-serif",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    color: "#C9B87A",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  Edit →
+                </button>
+              </div>
+            ) : (
+              <div
+                onClick={() => { setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                style={{ cursor: "pointer", flex: 1 }}
+              >
+                <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", fontWeight: 700, color: "#C9B87A", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 3px" }}>
+                  You&apos;re up next
+                </p>
+                <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "12px", color: "rgba(212,197,169,0.55)", margin: 0 }}>
+                  You&apos;re Challenge Master for Week {nextWeekNum}. Tap to create the challenge.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
