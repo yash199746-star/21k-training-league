@@ -11,11 +11,13 @@ import { getWeekStart } from "@/lib/scoring";
 // ── CM rotation ────────────────────────────────────────────────────────────
 const CM_ORDER = ["Yash", "Hardik", "Devansh"];
 const LEAGUE_START = new Date(Date.UTC(2026, 4, 4)); // Monday May 4, 2026
-const LEAGUE_START_MS = Date.UTC(2026, 4, 4)
-
 function getWeekNumber(weekStart: string): number {
-  const weekMs = new Date(weekStart + 'T00:00:00+05:30').getTime()
-  return Math.max(1, Math.floor((weekMs - LEAGUE_START_MS) / (7 * 24 * 60 * 60 * 1000)) + 1)
+  const start = new Date('2026-05-04')
+  const week  = new Date(weekStart)
+  const startMs = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())
+  const weekMs  = Date.UTC(week.getFullYear(),  week.getMonth(),  week.getDate())
+  const diffDays = Math.round((weekMs - startMs) / (1000 * 60 * 60 * 24))
+  return Math.max(1, Math.floor(diffDays / 7) + 1)
 }
 
 function getChallengeMasterForWeek(weekOffset: number): string {
