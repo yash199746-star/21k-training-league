@@ -11,6 +11,12 @@ import { getWeekStart } from "@/lib/scoring";
 // ── CM rotation ────────────────────────────────────────────────────────────
 const CM_ORDER = ["Yash", "Hardik", "Devansh"];
 const LEAGUE_START = new Date(Date.UTC(2026, 4, 4)); // Monday May 4, 2026
+const LEAGUE_START_MS = Date.UTC(2026, 4, 4)
+
+function getWeekNumber(weekStart: string): number {
+  const weekMs = new Date(weekStart + 'T00:00:00+05:30').getTime()
+  return Math.max(1, Math.floor((weekMs - LEAGUE_START_MS) / (7 * 24 * 60 * 60 * 1000)) + 1)
+}
 
 function getChallengeMasterForWeek(weekOffset: number): string {
   const now = new Date();
@@ -31,10 +37,6 @@ function getCurrentWeekNumber(): number {
   monday.setUTCDate(monday.getUTCDate() + diff);
   return Math.max(1, Math.floor((monday.getTime() - LEAGUE_START.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1);
 }
-function weekStartToNumber(weekStart: string): number {
-  const d = new Date(weekStart + "T00:00:00").getTime();
-  return Math.max(1, Math.floor((d - LEAGUE_START.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1);
-}
 function getNextMonday(): string {
   const d = new Date();
   const day = d.getDay();
@@ -45,6 +47,17 @@ function getNextMonday(): string {
 }
 
 // ── Challenge helpers ──────────────────────────────────────────────────────
+function getChallengeTypeLabel(type: string, targetValue: number, targetActivityType?: string | null): string {
+  switch (type) {
+    case 'number_of_runs':      return `Complete ${targetValue} run${targetValue > 1 ? 's' : ''} this week`
+    case 'total_distance':      return `Run ${targetValue}km total this week`
+    case 'single_run_distance': return `Complete a single run of at least ${targetValue}km`
+    case 'activity_streak':     return `Maintain a ${targetValue} day streak`
+    case 'activity_type':       return `Complete ${targetValue} ${targetActivityType} session${targetValue > 1 ? 's' : ''}`
+    default:                    return ''
+  }
+}
+
 const CHALLENGE_TYPE_MAP: Record<string, string> = {
   "Total Distance":      "total_distance",
   "Number of Runs":      "number_of_runs",
@@ -123,18 +136,19 @@ function formatDeadline(weekStart: string): string {
 
 // ── Interfaces ─────────────────────────────────────────────────────────────
 interface ChallengeData {
-  id:            string;
-  title:         string;
-  description:   string;
-  challenge_type: string;
-  target_value:  number;
-  week_start:    string;
-  created_by:    string;
-  createdByName: string;
-  weekNum:       number;
-  badge:         string;
-  deadline:      string;
-  bonus_points:  number;
+  id:                   string;
+  title:                string;
+  description:          string;
+  challenge_type:       string;
+  target_value:         number;
+  target_activity_type: string | null;
+  week_start:           string;
+  created_by:           string;
+  createdByName:        string;
+  weekNum:              number;
+  badge:                string;
+  deadline:             string;
+  bonus_points:         number;
 }
 
 interface ParticipantData {
@@ -150,10 +164,13 @@ interface ParticipantData {
 }
 
 interface PastChallengeData {
-  weekNum:     number;
-  title:       string;
-  completedOf: number;
-  total:       number;
+  weekNum:              number;
+  title:                string;
+  challenge_type:       string;
+  target_value:         number;
+  target_activity_type: string | null;
+  completedOf:          number;
+  total:                number;
 }
 
 interface UpcomingChallengeData {
@@ -362,7 +379,7 @@ export default function ChallengePage() {
         supabase.from("streaks").select("current_streak").eq("user_id", user.id).maybeSingle(),
         supabase.from("challenges").select("*").eq("is_active", true),
         supabase.from("challenges")
-          .select("id, title, description, week_start")
+          .select("id, title, description, week_start, challenge_type, target_value, target_activity_type")
           .eq("is_active", false)
           .order("week_start", { ascending: false })
           .limit(10),
@@ -404,18 +421,19 @@ export default function ChallengePage() {
         }
 
         setChallenge({
-          id:            active.id,
-          title:         active.title,
-          description:   active.description,
-          challenge_type: active.challenge_type,
-          target_value:  active.target_value,
-          week_start:    active.week_start,
-          created_by:    active.created_by,
-          createdByName: creatorProfile?.name || "Unknown",
-          weekNum:       weekStartToNumber(active.week_start),
-          badge:         getBadgeText(active.challenge_type, active.target_value),
-          deadline:      formatDeadline(active.week_start),
-          bonus_points:  bonusPts,
+          id:                   active.id,
+          title:                active.title,
+          description:          active.description,
+          challenge_type:       active.challenge_type,
+          target_value:         active.target_value,
+          target_activity_type: active.target_activity_type ?? null,
+          week_start:           active.week_start,
+          created_by:           active.created_by,
+          createdByName:        creatorProfile?.name || "Unknown",
+          weekNum:              getWeekNumber(active.week_start),
+          badge:                getBadgeText(active.challenge_type, active.target_value),
+          deadline:             formatDeadline(active.week_start),
+          bonus_points:         bonusPts,
         });
 
         // Build participants from all profiles
@@ -460,10 +478,13 @@ export default function ChallengePage() {
 
         const totalUsers = (allProfiles ?? []).length;
         setPastList(pastChs.map(c => ({
-          weekNum:     weekStartToNumber(c.week_start),
-          title:       c.title,
-          completedOf: (pastProgress ?? []).filter(p => p.challenge_id === c.id && p.is_completed).length,
-          total:       totalUsers,
+          weekNum:              getWeekNumber(c.week_start),
+          title:                c.title,
+          challenge_type:       c.challenge_type,
+          target_value:         c.target_value,
+          target_activity_type: c.target_activity_type ?? null,
+          completedOf:          (pastProgress ?? []).filter(p => p.challenge_id === c.id && p.is_completed).length,
+          total:                totalUsers,
         })));
       }
 
@@ -675,9 +696,26 @@ export default function ChallengePage() {
             <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "24px", fontWeight: 700, color: "#F5F2ED", margin: "0 0 10px", lineHeight: 1.2 }}>
               {challenge.title}
             </h2>
-            <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "13px", color: "rgba(212,197,169,0.65)", margin: "0 0 14px", lineHeight: 1.5 }}>
+            <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "13px", color: "rgba(212,197,169,0.65)", margin: "0 0 10px", lineHeight: 1.5 }}>
               {challenge.description}
             </p>
+            {getChallengeTypeLabel(challenge.challenge_type, challenge.target_value, challenge.target_activity_type) && (
+              <div style={{ marginBottom: "14px" }}>
+                <span style={{
+                  backgroundColor: "rgba(201,184,122,0.08)",
+                  border: "1px solid rgba(201,184,122,0.22)",
+                  borderRadius: "999px",
+                  padding: "4px 11px",
+                  fontFamily: "Montserrat, sans-serif",
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  color: "rgba(201,184,122,0.8)",
+                  letterSpacing: "0.04em",
+                }}>
+                  {getChallengeTypeLabel(challenge.challenge_type, challenge.target_value, challenge.target_activity_type)}
+                </span>
+              </div>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "14px" }}>
               <span style={{
                 backgroundColor: "rgba(201,184,122,0.12)", border: "1px solid rgba(201,184,122,0.3)",
@@ -762,7 +800,7 @@ export default function ChallengePage() {
               borderRadius: "16px", padding: "18px",
             }}>
               <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "10px", fontWeight: 700, color: "#C9B87A", letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 6px" }}>
-                Week {currentWeekNum + 1} Challenge
+                Week {getWeekNumber(upcoming.week_start)} Challenge
               </p>
               <h3 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "20px", fontWeight: 700, color: "#F5F2ED", margin: "0 0 8px" }}>
                 {upcoming.title}
@@ -785,8 +823,10 @@ export default function ChallengePage() {
           </p>
         ) : (
           <div>
-            {pastList.map(({ weekNum, title, completedOf, total }) => {
+            {pastList.map((pc) => {
+              const { weekNum, title, challenge_type, target_value, target_activity_type, completedOf, total } = pc;
               const allDone = completedOf === total && total > 0;
+              const typeLabel = getChallengeTypeLabel(challenge_type, target_value, target_activity_type);
               return (
                 <div key={weekNum} style={{
                   backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
@@ -798,11 +838,27 @@ export default function ChallengePage() {
                     <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "9px", fontWeight: 700, color: "rgba(212,197,169,0.35)", letterSpacing: "0.2em", textTransform: "uppercase", display: "block", marginBottom: "4px" }}>
                       Week {weekNum}
                     </span>
-                    <p style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "15px", fontWeight: 700, color: "#F5F2ED", margin: 0 }}>
+                    <p style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "15px", fontWeight: 700, color: "#F5F2ED", margin: "0 0 6px" }}>
                       {title}
                     </p>
+                    {typeLabel && (
+                      <span style={{
+                        backgroundColor: "rgba(201,184,122,0.08)",
+                        border: "1px solid rgba(201,184,122,0.22)",
+                        borderRadius: "999px",
+                        padding: "3px 9px",
+                        fontFamily: "Montserrat, sans-serif",
+                        fontSize: "9px",
+                        fontWeight: 600,
+                        color: "rgba(201,184,122,0.7)",
+                        letterSpacing: "0.03em",
+                        display: "inline-block",
+                      }}>
+                        {typeLabel}
+                      </span>
+                    )}
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "5px", flexShrink: 0, marginLeft: "12px" }}>
                     {allDone && <CheckIcon color="#4A7C59" />}
                     <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "11px", fontWeight: 600, color: allDone ? "#4A7C59" : "rgba(212,197,169,0.45)" }}>
                       {allDone ? "All completed" : `${completedOf} of ${total} completed`}
