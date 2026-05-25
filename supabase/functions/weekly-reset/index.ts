@@ -85,14 +85,15 @@ Deno.serve(async (_req) => {
       await supabaseAdmin
         .from('challenges')
         .insert({
-          created_by: cmProfile?.id,
-          week_start: currentWeekStart,
-          title: fallback.title,
-          description: fallback.description,
-          challenge_type: fallback.challenge_type,
-          target_value: fallback.target_value,
+          created_by:           cmProfile?.id,
+          week_start:           currentWeekStart,
+          title:                fallback.title,
+          description:          fallback.description,
+          challenge_type:       fallback.challenge_type,
+          target_value:         fallback.target_value,
           target_activity_type: (fallback as any).target_activity_type || null,
-          is_active: true
+          min_distance_per_run: null,
+          is_active:            true
         })
 
       console.log('Created fallback challenge:', fallback.title)

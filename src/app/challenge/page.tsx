@@ -49,61 +49,67 @@ function getNextMonday(): string {
 }
 
 // ── Challenge helpers ──────────────────────────────────────────────────────
-function getChallengeTypeLabel(type: string, targetValue: number, targetActivityType?: string | null): string {
+function getChallengeTypeLabel(type: string, targetValue: number, targetActivityType?: string | null, minDistancePerRun?: number | null): string {
   switch (type) {
-    case 'number_of_runs':      return `Complete ${targetValue} run${targetValue > 1 ? 's' : ''} this week`
-    case 'total_distance':      return `Run ${targetValue}km total this week`
-    case 'single_run_distance': return `Complete a single run of at least ${targetValue}km`
-    case 'activity_streak':     return `Maintain a ${targetValue} day streak`
-    case 'activity_type':       return `Complete ${targetValue} ${targetActivityType} session${targetValue > 1 ? 's' : ''}`
-    default:                    return ''
+    case 'number_of_runs':         return `Complete ${targetValue} run${targetValue > 1 ? 's' : ''} this week`
+    case 'total_distance':         return `Run ${targetValue}km total this week`
+    case 'single_run_distance':    return `Complete a single run of at least ${targetValue}km`
+    case 'activity_streak':        return `Maintain a ${targetValue} day streak`
+    case 'activity_type':          return `Complete ${targetValue} ${targetActivityType} session${targetValue > 1 ? 's' : ''}`
+    case 'runs_with_min_distance': return `Complete ${targetValue} run${targetValue > 1 ? 's' : ''} of at least ${minDistancePerRun ?? 0}km each`
+    default:                       return ''
   }
 }
 
 const CHALLENGE_TYPE_MAP: Record<string, string> = {
-  "Total Distance":      "total_distance",
-  "Number of Runs":      "number_of_runs",
-  "Single Run Distance": "single_run_distance",
-  "Activity Streak":     "activity_streak",
-  "Activity Type":       "activity_type",
+  "Total Distance":           "total_distance",
+  "Number of Runs":           "number_of_runs",
+  "Single Run Distance":      "single_run_distance",
+  "Runs with Min Distance":   "runs_with_min_distance",
+  "Activity Streak":          "activity_streak",
+  "Activity Type":            "activity_type",
 };
 
 const CHALLENGE_TYPES = Object.keys(CHALLENGE_TYPE_MAP);
 
 const TARGET_UNITS: Record<string, string> = {
-  "Total Distance":      "km",
-  "Number of Runs":      "runs",
-  "Single Run Distance": "km",
-  "Activity Streak":     "days",
-  "Activity Type":       "sessions",
+  "Total Distance":         "km",
+  "Number of Runs":         "runs",
+  "Single Run Distance":    "km",
+  "Runs with Min Distance": "runs",
+  "Activity Streak":        "days",
+  "Activity Type":          "sessions",
 };
 
-function getBadgeText(type: string, target: number): string {
+function getBadgeText(type: string, target: number, minDistancePerRun?: number | null): string {
   switch (type) {
-    case "total_distance":      return `${target} KM TOTAL`;
-    case "number_of_runs":      return `${target} RUNS`;
-    case "single_run_distance": return `${target}+ KM RUN`;
-    case "activity_streak":     return `${target} DAY STREAK`;
-    case "activity_type":       return `${target} SESSIONS`;
-    default:                    return `TARGET: ${target}`;
+    case "total_distance":         return `${target} KM TOTAL`;
+    case "number_of_runs":         return `${target} RUNS`;
+    case "single_run_distance":    return `${target}+ KM RUN`;
+    case "runs_with_min_distance": return `${target} RUNS × ${minDistancePerRun ?? 0}KM+`;
+    case "activity_streak":        return `${target} DAY STREAK`;
+    case "activity_type":          return `${target} SESSIONS`;
+    default:                       return `TARGET: ${target}`;
   }
 }
 
-function buildProgressLabel(type: string, progress: number, target: number): string {
+function buildProgressLabel(type: string, progress: number, target: number, minDistancePerRun?: number | null): string {
   switch (type) {
-    case "total_distance":      return `${progress.toFixed(1)} of ${target} km`;
-    case "number_of_runs":      return `${Math.floor(progress)} of ${target} runs`;
-    case "single_run_distance": return `Best: ${progress.toFixed(1)} km · need ${target} km`;
-    case "activity_streak":     return `${Math.floor(progress)} day streak · need ${target}`;
-    case "activity_type":       return `${Math.floor(progress)} of ${target} sessions`;
-    default:                    return `${progress} of ${target}`;
+    case "total_distance":         return `${progress.toFixed(1)} of ${target} km`;
+    case "number_of_runs":         return `${Math.floor(progress)} of ${target} runs`;
+    case "single_run_distance":    return `Best: ${progress.toFixed(1)} km · need ${target} km`;
+    case "runs_with_min_distance": return `${Math.floor(progress)} of ${target} qualifying runs (≥${minDistancePerRun ?? 0}km each)`;
+    case "activity_streak":        return `${Math.floor(progress)} day streak · need ${target}`;
+    case "activity_type":          return `${Math.floor(progress)} of ${target} sessions`;
+    default:                       return `${progress} of ${target}`;
   }
 }
 
 function computeProgress(
   type: string,
   weekActs: { activity_type: string; distance_km: number | null; activity_subtype?: string | null }[],
-  currentStreak: number
+  currentStreak: number,
+  minDistancePerRun?: number | null
 ): number {
   const runs = weekActs.filter(a =>
     a.activity_type === "run" &&
@@ -117,6 +123,8 @@ function computeProgress(
       return runs.length;
     case "single_run_distance":
       return runs.reduce((max, a) => Math.max(max, a.distance_km || 0), 0);
+    case "runs_with_min_distance":
+      return runs.filter(a => (a.distance_km || 0) >= (minDistancePerRun || 0)).length;
     case "activity_streak":
       return currentStreak;
     case "activity_type":
@@ -144,6 +152,7 @@ interface ChallengeData {
   challenge_type:       string;
   target_value:         number;
   target_activity_type: string | null;
+  min_distance_per_run: number | null;
   week_start:           string;
   created_by:           string;
   createdByName:        string;
@@ -171,6 +180,7 @@ interface PastChallengeData {
   challenge_type:       string;
   target_value:         number;
   target_activity_type: string | null;
+  min_distance_per_run: number | null;
   completedOf:          number;
   total:                number;
 }
@@ -331,8 +341,9 @@ export default function ChallengePage() {
   const [formTitle,      setFormTitle]      = useState("");
   const [formDesc,       setFormDesc]       = useState("");
   const [formType,       setFormType]       = useState("Total Distance");
-  const [formTarget,     setFormTarget]     = useState("");
-  const [formSubmitted,  setFormSubmitted]  = useState(false);
+  const [formTarget,       setFormTarget]       = useState("");
+  const [formMinDistance,  setFormMinDistance]  = useState("");
+  const [formSubmitted,    setFormSubmitted]    = useState(false);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formErrors,     setFormErrors]     = useState<string[]>([]);
 
@@ -381,7 +392,7 @@ export default function ChallengePage() {
         supabase.from("streaks").select("current_streak").eq("user_id", user.id).maybeSingle(),
         supabase.from("challenges").select("*").eq("is_active", true),
         supabase.from("challenges")
-          .select("id, title, description, week_start, challenge_type, target_value, target_activity_type")
+          .select("id, title, description, week_start, challenge_type, target_value, target_activity_type, min_distance_per_run")
           .eq("is_active", false)
           .order("week_start", { ascending: false })
           .limit(10),
@@ -405,7 +416,7 @@ export default function ChallengePage() {
         ]);
 
         // Compute my fresh progress
-        const myProgress = computeProgress(active.challenge_type, weekActs ?? [], streakRow?.current_streak || 0);
+        const myProgress = computeProgress(active.challenge_type, weekActs ?? [], streakRow?.current_streak || 0, active.min_distance_per_run);
         const myCompleted = myProgress >= active.target_value;
         const bonusPts = active.bonus_points || 10;
 
@@ -429,11 +440,12 @@ export default function ChallengePage() {
           challenge_type:       active.challenge_type,
           target_value:         active.target_value,
           target_activity_type: active.target_activity_type ?? null,
+          min_distance_per_run: active.min_distance_per_run ?? null,
           week_start:           active.week_start,
           created_by:           active.created_by,
           createdByName:        creatorProfile?.name || "Unknown",
           weekNum:              getWeekNumber(active.week_start),
-          badge:                getBadgeText(active.challenge_type, active.target_value),
+          badge:                getBadgeText(active.challenge_type, active.target_value, active.min_distance_per_run),
           deadline:             formatDeadline(active.week_start),
           bonus_points:         bonusPts,
         });
@@ -454,7 +466,7 @@ export default function ChallengePage() {
             target:        active.target_value,
             completed:     done,
             points:        done ? bonusPts : 0,
-            progressLabel: buildProgressLabel(active.challenge_type, displayVal, active.target_value),
+            progressLabel: buildProgressLabel(active.challenge_type, displayVal, active.target_value, active.min_distance_per_run),
             isMe,
           };
         });
@@ -485,6 +497,7 @@ export default function ChallengePage() {
           challenge_type:       c.challenge_type,
           target_value:         c.target_value,
           target_activity_type: c.target_activity_type ?? null,
+          min_distance_per_run: c.min_distance_per_run ?? null,
           completedOf:          (pastProgress ?? []).filter(p => p.challenge_id === c.id && p.is_completed).length,
           total:                totalUsers,
         })));
@@ -500,6 +513,8 @@ export default function ChallengePage() {
     if (!formTitle.trim())                          errs.push("Please enter a challenge title.");
     if (!formDesc.trim())                           errs.push("Please enter a description.");
     if (!formTarget || parseFloat(formTarget) <= 0) errs.push("Please enter a valid target.");
+    if (formType === "Runs with Min Distance" && (!formMinDistance || parseFloat(formMinDistance) <= 0))
+      errs.push("Please enter a valid minimum km per run.");
     if (errs.length) { setFormErrors(errs); return; }
 
     // Validate that the current user is actually next week's CM
@@ -514,6 +529,8 @@ export default function ChallengePage() {
 
     const supabase = createClient();
     const nextMonday = getNextMonday();
+    const challengeType = CHALLENGE_TYPE_MAP[formType];
+    const minDistVal = formType === "Runs with Min Distance" ? parseFloat(formMinDistance) : null;
 
     // Upsert: update if a challenge already exists for next week, otherwise insert
     const { data: existing } = await supabase
@@ -527,22 +544,24 @@ export default function ChallengePage() {
       const { error: updateError } = await supabase
         .from("challenges")
         .update({
-          title:          formTitle.trim(),
-          description:    formDesc.trim(),
-          challenge_type: CHALLENGE_TYPE_MAP[formType],
-          target_value:   parseFloat(formTarget),
+          title:                formTitle.trim(),
+          description:          formDesc.trim(),
+          challenge_type:       challengeType,
+          target_value:         parseFloat(formTarget),
+          min_distance_per_run: minDistVal,
         })
         .eq("id", existing.id);
       error = updateError;
     } else {
       const { error: insertError } = await supabase.from("challenges").insert({
-        created_by:     userId,
-        week_start:     nextMonday,
-        title:          formTitle.trim(),
-        description:    formDesc.trim(),
-        challenge_type: CHALLENGE_TYPE_MAP[formType],
-        target_value:   parseFloat(formTarget),
-        is_active:      false,
+        created_by:           userId,
+        week_start:           nextMonday,
+        title:                formTitle.trim(),
+        description:          formDesc.trim(),
+        challenge_type:       challengeType,
+        target_value:         parseFloat(formTarget),
+        min_distance_per_run: minDistVal,
+        is_active:            false,
       });
       error = insertError;
     }
@@ -697,15 +716,29 @@ export default function ChallengePage() {
               </select>
             </div>
 
-            <div style={{ marginBottom: "20px" }}>
-              <label style={formLabelStyle}>Target ({TARGET_UNITS[formType]})</label>
+            <div style={{ marginBottom: formType === "Runs with Min Distance" ? "12px" : "20px" }}>
+              <label style={formLabelStyle}>
+                {formType === "Runs with Min Distance" ? "Number of Runs" : `Target (${TARGET_UNITS[formType]})`}
+              </label>
               <input
                 type="number" value={formTarget} onChange={e => setFormTarget(e.target.value)}
-                placeholder={formType === "Total Distance" ? "30" : formType === "Number of Runs" ? "4" : "5"}
-                min="0" step={formType.includes("Distance") ? "0.5" : "1"}
+                placeholder={formType === "Total Distance" ? "30" : formType === "Number of Runs" || formType === "Runs with Min Distance" ? "3" : "5"}
+                min="0" step="1"
                 style={inputStyle}
               />
             </div>
+
+            {formType === "Runs with Min Distance" && (
+              <div style={{ marginBottom: "20px" }}>
+                <label style={formLabelStyle}>Min KM per Run</label>
+                <input
+                  type="number" value={formMinDistance} onChange={e => setFormMinDistance(e.target.value)}
+                  placeholder="5"
+                  min="0" step="0.5"
+                  style={inputStyle}
+                />
+              </div>
+            )}
 
             {formErrors.length > 0 && (
               <div style={{ backgroundColor: "rgba(220,90,90,0.08)", border: "1px solid rgba(220,90,90,0.25)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px" }}>
@@ -762,7 +795,7 @@ export default function ChallengePage() {
             <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "13px", color: "rgba(212,197,169,0.65)", margin: "0 0 10px", lineHeight: 1.5 }}>
               {challenge.description}
             </p>
-            {getChallengeTypeLabel(challenge.challenge_type, challenge.target_value, challenge.target_activity_type) && (
+            {getChallengeTypeLabel(challenge.challenge_type, challenge.target_value, challenge.target_activity_type, challenge.min_distance_per_run) && (
               <div style={{ marginBottom: "14px" }}>
                 <span style={{
                   backgroundColor: "rgba(201,184,122,0.08)",
@@ -775,7 +808,7 @@ export default function ChallengePage() {
                   color: "rgba(201,184,122,0.8)",
                   letterSpacing: "0.04em",
                 }}>
-                  {getChallengeTypeLabel(challenge.challenge_type, challenge.target_value, challenge.target_activity_type)}
+                  {getChallengeTypeLabel(challenge.challenge_type, challenge.target_value, challenge.target_activity_type, challenge.min_distance_per_run)}
                 </span>
               </div>
             )}
@@ -887,9 +920,9 @@ export default function ChallengePage() {
         ) : (
           <div>
             {pastList.map((pc) => {
-              const { weekNum, title, challenge_type, target_value, target_activity_type, completedOf, total } = pc;
+              const { weekNum, title, challenge_type, target_value, target_activity_type, min_distance_per_run, completedOf, total } = pc;
               const allDone = completedOf === total && total > 0;
-              const typeLabel = getChallengeTypeLabel(challenge_type, target_value, target_activity_type);
+              const typeLabel = getChallengeTypeLabel(challenge_type, target_value, target_activity_type, min_distance_per_run);
               return (
                 <div key={weekNum} style={{
                   backgroundColor: "rgba(13,24,41,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",

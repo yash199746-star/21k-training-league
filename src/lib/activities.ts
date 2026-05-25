@@ -280,6 +280,21 @@ export async function logActivity({
         !r.activity_subtype?.startsWith('cm_bonus_')
       )
       progressValue = realRuns.length
+    } else if (activeChallenge.challenge_type === 'runs_with_min_distance') {
+      const { data: runsRaw } = await supabase
+        .from('activities')
+        .select('distance_km, activity_subtype')
+        .eq('user_id', userId)
+        .eq('activity_type', 'run')
+        .gte('date', weekStart)
+      const realRuns = (runsRaw || []).filter((r: { distance_km?: number | null; activity_subtype?: string | null }) =>
+        r.activity_subtype !== 'challenge_completion_bonus' &&
+        !r.activity_subtype?.startsWith('cm_bonus_')
+      )
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      progressValue = realRuns.filter((r: any) =>
+        (r.distance_km || 0) >= (activeChallenge.min_distance_per_run || 0)
+      ).length
     } else if (activeChallenge.challenge_type === 'total_distance') {
       const { data: runsRaw } = await supabase
         .from('activities')
