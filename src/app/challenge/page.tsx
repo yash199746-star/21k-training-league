@@ -825,15 +825,17 @@ export default function ChallengePage() {
                 </span>
               </div>
             )}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "14px" }}>
-              <span style={{
-                backgroundColor: "rgba(201,184,122,0.12)", border: "1px solid rgba(201,184,122,0.3)",
-                borderRadius: "999px", padding: "5px 12px",
-                fontFamily: "Montserrat, sans-serif", fontSize: "10px", fontWeight: 700, color: "#C9B87A", letterSpacing: "0.1em",
-              }}>
-                {challenge.badge}
-              </span>
-            </div>
+            {challenge.challenge_type !== 'run_streak' && (
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "14px" }}>
+                <span style={{
+                  backgroundColor: "rgba(201,184,122,0.12)", border: "1px solid rgba(201,184,122,0.3)",
+                  borderRadius: "999px", padding: "5px 12px",
+                  fontFamily: "Montserrat, sans-serif", fontSize: "10px", fontWeight: 700, color: "#C9B87A", letterSpacing: "0.1em",
+                }}>
+                  {challenge.badge}
+                </span>
+              </div>
+            )}
             <div style={{ borderTop: "1px solid rgba(212,197,169,0.08)", margin: "0 0 12px" }} />
             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
               <CrownIcon />
