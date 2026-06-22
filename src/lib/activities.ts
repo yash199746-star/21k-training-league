@@ -320,7 +320,21 @@ export async function logActivity({
       )
       progressValue = realRuns.reduce((max: number, r: { distance_km?: number | null }) => Math.max(max, r.distance_km || 0), 0)
     } else if (activeChallenge.challenge_type === 'activity_streak') {
-      progressValue = currentStreak
+      const { data: streakActsRaw } = await supabase
+        .from('activities')
+        .select('date, activity_subtype')
+        .eq('user_id', userId)
+        .gte('date', weekStart)
+      const uniqueActiveDays = new Set(
+        (streakActsRaw || [])
+          .filter((a: { activity_subtype?: string | null }) =>
+            a.activity_subtype !== 'challenge_completion_bonus' &&
+            !a.activity_subtype?.startsWith('cm_bonus_')
+          )
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((a: any) => a.date as string)
+      )
+      progressValue = uniqueActiveDays.size
     } else if (activeChallenge.challenge_type === 'activity_type') {
       const { data: activitiesRaw } = await supabase
         .from('activities')

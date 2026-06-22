@@ -107,15 +107,15 @@ function buildProgressLabel(type: string, progress: number, target: number, minD
 
 function computeProgress(
   type: string,
-  weekActs: { activity_type: string; distance_km: number | null; activity_subtype?: string | null }[],
-  currentStreak: number,
+  weekActs: { date: string; activity_type: string; distance_km: number | null; activity_subtype?: string | null }[],
+  _currentStreak: number,
   minDistancePerRun?: number | null
 ): number {
-  const runs = weekActs.filter(a =>
-    a.activity_type === "run" &&
+  const realActs = weekActs.filter(a =>
     a.activity_subtype !== "challenge_completion_bonus" &&
     !a.activity_subtype?.startsWith("cm_bonus_")
   );
+  const runs = realActs.filter(a => a.activity_type === "run");
   switch (type) {
     case "total_distance":
       return runs.reduce((s, a) => s + (a.distance_km || 0), 0);
@@ -126,13 +126,9 @@ function computeProgress(
     case "runs_with_min_distance":
       return runs.filter(a => (a.distance_km || 0) >= (minDistancePerRun || 0)).length;
     case "activity_streak":
-      return currentStreak;
+      return new Set(realActs.map(a => a.date)).size;
     case "activity_type":
-      return weekActs.filter(a =>
-        a.activity_type === "activity" &&
-        a.activity_subtype !== "challenge_completion_bonus" &&
-        !a.activity_subtype?.startsWith("cm_bonus_")
-      ).length;
+      return realActs.filter(a => a.activity_type === "activity").length;
     default:
       return 0;
   }
@@ -386,7 +382,7 @@ export default function ChallengePage() {
         supabase.from("profiles").select("name").eq("id", user.id).single(),
         supabase.from("profiles").select("id, name, avatar_url"),
         supabase.from("activities")
-          .select("activity_type, distance_km, activity_subtype")
+          .select("date, activity_type, distance_km, activity_subtype")
           .eq("user_id", user.id)
           .gte("date", weekStart),
         supabase.from("streaks").select("current_streak").eq("user_id", user.id).maybeSingle(),
