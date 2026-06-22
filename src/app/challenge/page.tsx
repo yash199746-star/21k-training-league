@@ -57,6 +57,7 @@ function getChallengeTypeLabel(type: string, targetValue: number, targetActivity
     case 'activity_streak':        return `Maintain a ${targetValue} day streak`
     case 'activity_type':          return `Complete ${targetValue} ${targetActivityType} session${targetValue > 1 ? 's' : ''}`
     case 'runs_with_min_distance': return `Complete ${targetValue} run${targetValue > 1 ? 's' : ''} of at least ${minDistancePerRun ?? 0}km each`
+    case 'run_streak':             return minDistancePerRun ? `Run ≥${minDistancePerRun}km on ${targetValue} days this week` : `Log a run on ${targetValue} days this week`
     default:                       return ''
   }
 }
@@ -66,6 +67,7 @@ const CHALLENGE_TYPE_MAP: Record<string, string> = {
   "Number of Runs":           "number_of_runs",
   "Single Run Distance":      "single_run_distance",
   "Runs with Min Distance":   "runs_with_min_distance",
+  "Run Streak":               "run_streak",
   "Activity Streak":          "activity_streak",
   "Activity Type":            "activity_type",
 };
@@ -77,6 +79,7 @@ const TARGET_UNITS: Record<string, string> = {
   "Number of Runs":         "runs",
   "Single Run Distance":    "km",
   "Runs with Min Distance": "runs",
+  "Run Streak":             "days",
   "Activity Streak":        "days",
   "Activity Type":          "sessions",
 };
@@ -87,6 +90,7 @@ function getBadgeText(type: string, target: number, minDistancePerRun?: number |
     case "number_of_runs":         return `${target} RUNS`;
     case "single_run_distance":    return `${target}+ KM RUN`;
     case "runs_with_min_distance": return `${target} RUNS × ${minDistancePerRun ?? 0}KM+`;
+    case "run_streak":             return minDistancePerRun ? `${target} RUN DAYS × ${minDistancePerRun}KM+` : `${target} RUN DAYS`;
     case "activity_streak":        return `${target} DAY STREAK`;
     case "activity_type":          return `${target} SESSIONS`;
     default:                       return `TARGET: ${target}`;
@@ -99,6 +103,9 @@ function buildProgressLabel(type: string, progress: number, target: number, minD
     case "number_of_runs":         return `${Math.floor(progress)} of ${target} runs`;
     case "single_run_distance":    return `Best: ${progress.toFixed(1)} km · need ${target} km`;
     case "runs_with_min_distance": return `${Math.floor(progress)} of ${target} qualifying runs (≥${minDistancePerRun ?? 0}km each)`;
+    case "run_streak":             return minDistancePerRun
+      ? `${Math.floor(progress)} of ${target} run days (≥${minDistancePerRun}km each)`
+      : `${Math.floor(progress)} of ${target} run days`;
     case "activity_streak":        return `${Math.floor(progress)} day streak · need ${target}`;
     case "activity_type":          return `${Math.floor(progress)} of ${target} sessions`;
     default:                       return `${progress} of ${target}`;
@@ -125,6 +132,10 @@ function computeProgress(
       return runs.reduce((max, a) => Math.max(max, a.distance_km || 0), 0);
     case "runs_with_min_distance":
       return runs.filter(a => (a.distance_km || 0) >= (minDistancePerRun || 0)).length;
+    case "run_streak":
+      return new Set(
+        runs.filter(a => (a.distance_km || 0) >= (minDistancePerRun || 0)).map(a => a.date)
+      ).size;
     case "activity_streak":
       return new Set(realActs.map(a => a.date)).size;
     case "activity_type":
@@ -511,6 +522,8 @@ export default function ChallengePage() {
     if (!formTarget || parseFloat(formTarget) <= 0) errs.push("Please enter a valid target.");
     if (formType === "Runs with Min Distance" && (!formMinDistance || parseFloat(formMinDistance) <= 0))
       errs.push("Please enter a valid minimum km per run.");
+    if (formType === "Run Streak" && formMinDistance && parseFloat(formMinDistance) < 0)
+      errs.push("Minimum km per run cannot be negative.");
     if (errs.length) { setFormErrors(errs); return; }
 
     // Validate that the current user is actually next week's CM
@@ -526,7 +539,9 @@ export default function ChallengePage() {
     const supabase = createClient();
     const nextMonday = getNextMonday();
     const challengeType = CHALLENGE_TYPE_MAP[formType];
-    const minDistVal = formType === "Runs with Min Distance" ? parseFloat(formMinDistance) : null;
+    const minDistVal = (formType === "Runs with Min Distance" || formType === "Run Streak") && formMinDistance
+      ? parseFloat(formMinDistance)
+      : null;
 
     // Upsert: update if a challenge already exists for next week, otherwise insert
     const { data: existing } = await supabase
@@ -712,24 +727,26 @@ export default function ChallengePage() {
               </select>
             </div>
 
-            <div style={{ marginBottom: formType === "Runs with Min Distance" ? "12px" : "20px" }}>
+            <div style={{ marginBottom: formType === "Runs with Min Distance" || formType === "Run Streak" ? "12px" : "20px" }}>
               <label style={formLabelStyle}>
                 {formType === "Runs with Min Distance" ? "Number of Runs" : `Target (${TARGET_UNITS[formType]})`}
               </label>
               <input
                 type="number" value={formTarget} onChange={e => setFormTarget(e.target.value)}
-                placeholder={formType === "Total Distance" ? "30" : formType === "Number of Runs" || formType === "Runs with Min Distance" ? "3" : "5"}
+                placeholder={formType === "Total Distance" ? "30" : formType === "Number of Runs" || formType === "Runs with Min Distance" || formType === "Run Streak" ? "3" : "5"}
                 min="0" step="1"
                 style={inputStyle}
               />
             </div>
 
-            {formType === "Runs with Min Distance" && (
+            {(formType === "Runs with Min Distance" || formType === "Run Streak") && (
               <div style={{ marginBottom: "20px" }}>
-                <label style={formLabelStyle}>Min KM per Run</label>
+                <label style={formLabelStyle}>
+                  Min KM per Run{formType === "Run Streak" ? " (optional — leave blank for any run)" : ""}
+                </label>
                 <input
                   type="number" value={formMinDistance} onChange={e => setFormMinDistance(e.target.value)}
-                  placeholder="5"
+                  placeholder={formType === "Run Streak" ? "0" : "5"}
                   min="0" step="0.5"
                   style={inputStyle}
                 />
